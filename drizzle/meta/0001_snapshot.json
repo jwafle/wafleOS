@@ -1,0 +1,632 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "4abb3d25-7325-407d-8c63-22ec59777fe6",
+  "prevId": "d7cf5de9-0817-458c-a2ce-6709b9ed1333",
+  "tables": {
+    "exercises": {
+      "name": "exercises",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "measured_in": {
+          "name": "measured_in",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "name_measured_in_unique": {
+          "name": "name_measured_in_unique",
+          "columns": [
+            "name",
+            "measured_in"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "measured_in_check": {
+          "name": "measured_in_check",
+          "value": "\"exercises\".\"measured_in\" IN ('duration', 'reps', 'reps_and_weight')"
+        }
+      }
+    },
+    "set_groups": {
+      "name": "set_groups",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "exercise": {
+          "name": "exercise",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "workout": {
+          "name": "workout",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "index": {
+          "name": "index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "restDuration": {
+          "name": "restDuration",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 150
+        },
+        "isSuperset": {
+          "name": "isSuperset",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "workout_index_unique": {
+          "name": "workout_index_unique",
+          "columns": [
+            "workout",
+            "index"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "set_groups_exercise_exercises_id_fk": {
+          "name": "set_groups_exercise_exercises_id_fk",
+          "tableFrom": "set_groups",
+          "tableTo": "exercises",
+          "columnsFrom": [
+            "exercise"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "set_groups_workout_workouts_id_fk": {
+          "name": "set_groups_workout_workouts_id_fk",
+          "tableFrom": "set_groups",
+          "tableTo": "workouts",
+          "columnsFrom": [
+            "workout"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "index_check": {
+          "name": "index_check",
+          "value": "\"set_groups\".\"index\" > -1"
+        },
+        "rest_duration_check": {
+          "name": "rest_duration_check",
+          "value": "\"set_groups\".\"restDuration\" >= 0"
+        },
+        "is_superset_check": {
+          "name": "is_superset_check",
+          "value": "\"set_groups\".\"isSuperset\" IN (0,1)"
+        }
+      }
+    },
+    "sets": {
+      "name": "sets",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "exercise": {
+          "name": "exercise",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "setGroup": {
+          "name": "setGroup",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "workout": {
+          "name": "workout",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "index": {
+          "name": "index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'working'"
+        },
+        "reps": {
+          "name": "reps",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "weight": {
+          "name": "weight",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "duration": {
+          "name": "duration",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "finishedAt": {
+          "name": "finishedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "set_group_index_unique": {
+          "name": "set_group_index_unique",
+          "columns": [
+            "setGroup",
+            "index"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "sets_exercise_exercises_id_fk": {
+          "name": "sets_exercise_exercises_id_fk",
+          "tableFrom": "sets",
+          "tableTo": "exercises",
+          "columnsFrom": [
+            "exercise"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sets_setGroup_set_groups_id_fk": {
+          "name": "sets_setGroup_set_groups_id_fk",
+          "tableFrom": "sets",
+          "tableTo": "set_groups",
+          "columnsFrom": [
+            "setGroup"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sets_workout_workouts_id_fk": {
+          "name": "sets_workout_workouts_id_fk",
+          "tableFrom": "sets",
+          "tableTo": "workouts",
+          "columnsFrom": [
+            "workout"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "index_check": {
+          "name": "index_check",
+          "value": "\"sets\".\"index\" > -1"
+        },
+        "type_check": {
+          "name": "type_check",
+          "value": "\"sets\".\"type\" IN ('warmup', 'working')"
+        },
+        "reps_check": {
+          "name": "reps_check",
+          "value": "\"sets\".\"reps\" > 0 OR \"sets\".\"reps\" IS NULL"
+        },
+        "weight_check": {
+          "name": "weight_check",
+          "value": "\"sets\".\"weight\" > 0 OR \"sets\".\"weight\" IS NULL"
+        },
+        "duration_check": {
+          "name": "duration_check",
+          "value": "\"sets\".\"duration\" > 0 OR \"sets\".\"duration\" IS NULL"
+        }
+      }
+    },
+    "template_set_groups": {
+      "name": "template_set_groups",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "exercise": {
+          "name": "exercise",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "template": {
+          "name": "template",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "index": {
+          "name": "index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "restDuration": {
+          "name": "restDuration",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 150
+        },
+        "isSuperset": {
+          "name": "isSuperset",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "template_index_unique": {
+          "name": "template_index_unique",
+          "columns": [
+            "template",
+            "index"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "template_set_groups_exercise_exercises_id_fk": {
+          "name": "template_set_groups_exercise_exercises_id_fk",
+          "tableFrom": "template_set_groups",
+          "tableTo": "exercises",
+          "columnsFrom": [
+            "exercise"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "template_set_groups_template_templates_id_fk": {
+          "name": "template_set_groups_template_templates_id_fk",
+          "tableFrom": "template_set_groups",
+          "tableTo": "templates",
+          "columnsFrom": [
+            "template"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "index_check": {
+          "name": "index_check",
+          "value": "\"template_set_groups\".\"index\" > -1"
+        },
+        "rest_duration_check": {
+          "name": "rest_duration_check",
+          "value": "\"template_set_groups\".\"restDuration\" >= 0"
+        },
+        "is_superset_check": {
+          "name": "is_superset_check",
+          "value": "\"template_set_groups\".\"isSuperset\" IN (0,1)"
+        }
+      }
+    },
+    "template_sets": {
+      "name": "template_sets",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "exercise": {
+          "name": "exercise",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "templateSetGroup": {
+          "name": "templateSetGroup",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "template": {
+          "name": "template",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "index": {
+          "name": "index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'working'"
+        }
+      },
+      "indexes": {
+        "template_set_group_index_unique": {
+          "name": "template_set_group_index_unique",
+          "columns": [
+            "templateSetGroup",
+            "index"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "template_sets_exercise_exercises_id_fk": {
+          "name": "template_sets_exercise_exercises_id_fk",
+          "tableFrom": "template_sets",
+          "tableTo": "exercises",
+          "columnsFrom": [
+            "exercise"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "template_sets_templateSetGroup_template_set_groups_id_fk": {
+          "name": "template_sets_templateSetGroup_template_set_groups_id_fk",
+          "tableFrom": "template_sets",
+          "tableTo": "template_set_groups",
+          "columnsFrom": [
+            "templateSetGroup"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "template_sets_template_templates_id_fk": {
+          "name": "template_sets_template_templates_id_fk",
+          "tableFrom": "template_sets",
+          "tableTo": "templates",
+          "columnsFrom": [
+            "template"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "index_check": {
+          "name": "index_check",
+          "value": "\"template_sets\".\"index\" > -1"
+        },
+        "type_check": {
+          "name": "type_check",
+          "value": "\"template_sets\".\"type\" IN ('warmup', 'working')"
+        }
+      }
+    },
+    "templates": {
+      "name": "templates",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "name_unique": {
+          "name": "name_unique",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "workouts": {
+      "name": "workouts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "template": {
+          "name": "template",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "startedAt": {
+          "name": "startedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "finishedAt": {
+          "name": "finishedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "workouts_template_templates_id_fk": {
+          "name": "workouts_template_templates_id_fk",
+          "tableFrom": "workouts",
+          "tableTo": "templates",
+          "columnsFrom": [
+            "template"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

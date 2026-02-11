@@ -1,0 +1,39 @@
+Ok, now that error is gone, but a new one appeared.
+
+Error:
+```
+{
+    "type": "result",
+    "result": "[{\"submission\":1,\"issues\":2},true,[3],{\"name\":4,\"path\":5,\"message\":6,\"server\":1},\"templateId\",[4],\"Invalid input: expected number, received string\"]"
+}
+```
+
++page.svelte
+```
+<script lang="ts">
+	import { getTemplatesPaginated } from './templates.remote';
+	import { getCurrentWorkout, startWorkout } from './workouts.remote';
+</script>
+
+{#await getCurrentWorkout()}
+	<p>loading</p>
+{:then currentWorkout}
+	{#if currentWorkout}
+		<a href="/fitness/workouts/{currentWorkout.id}"
+			>Return to your {currentWorkout.template.name} workout</a
+		>
+	{/if}
+{/await}
+
+<ul>
+	{#each await getTemplatesPaginated(0) as template}
+		<li>
+			<form {...startWorkout.for(template.id)}>
+				<input type="hidden" name="templateId" value={template.id} />
+				<button>{template.name}</button>
+			</form>
+		</li>
+	{/each}
+</ul>
+<button>create a new workout template</button>
+```
