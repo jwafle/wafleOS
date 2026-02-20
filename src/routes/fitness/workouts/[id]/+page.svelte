@@ -14,6 +14,7 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	let addSetGroupDialog: HTMLDialogElement | null = $state(null);
 
 	const workoutQuery = $derived(getWorkoutById(data.workoutId));
 	const exercisesQuery = getExercisesForPicker();
@@ -43,18 +44,25 @@
 			<button>Delete workout</button>
 		</form>
 
-		<form {...addSetGroup}>
-			<input type="hidden" name="workoutId" value={workout.id} />
-			<label>
-				Exercise
-				<select name="exerciseId">
-					{#each exercises as exercise (exercise.id)}
-						<option value={exercise.id}>{exercise.name}</option>
-					{/each}
-				</select>
-			</label>
-			<button>Add set group</button>
-		</form>
+		<button onclick={() => addSetGroupDialog?.showModal()}>Add set group</button>
+
+		<dialog bind:this={addSetGroupDialog}>
+			<h2>Select an exercise</h2>
+			<ul>
+				{#each exercises as exercise (exercise.id)}
+					<li>
+						<form {...addSetGroup.for(`add-set-group-${exercise.id}`)}>
+							<input type="hidden" name="workoutId" value={workout.id} />
+							<input type="hidden" name="exerciseId" value={exercise.id} />
+							<button onclick={() => addSetGroupDialog?.close()}>{exercise.name}</button>
+						</form>
+					</li>
+				{/each}
+			</ul>
+			<form method="dialog">
+				<button>Cancel</button>
+			</form>
+		</dialog>
 
 		{#each workout.setGroups as setGroup, setGroupIndex (setGroup.id)}
 			<section>

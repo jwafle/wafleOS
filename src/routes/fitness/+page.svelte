@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getTemplatesPaginated } from './templates.remote';
+	import { createTemplate, getTemplatesPaginated } from './templates.remote';
 	import { getCurrentWorkout, startWorkout, deleteWorkout } from './workouts.remote';
 </script>
 
@@ -14,16 +14,22 @@
 			<button>Delete</button>
 		</form>
 	{/if}
+
+	<h2>start a new workout from a template</h2>
+	<ul>
+		{#each await getTemplatesPaginated(0) as template}
+			<li>
+				<form {...startWorkout.for(template.id)}>
+					<input type="hidden" name="templateId" value={template.id} />
+					<button disabled={Boolean(currentWorkout)}>{template.name}</button>
+				</form>
+				<a href="/fitness/templates/{template.id}">Edit template</a>
+			</li>
+		{/each}
+	</ul>
 {/await}
 
-<ul>
-	{#each await getTemplatesPaginated(0) as template}
-		<li>
-			<form {...startWorkout.for(template.id)}>
-				<input type="hidden" name="templateId" value={template.id} />
-				<button>{template.name}</button>
-			</form>
-		</li>
-	{/each}
-</ul>
-<button>create a new workout template</button>
+<form {...createTemplate}>
+	<input type="hidden" name="name" value="New Template" />
+	<button>Create a new workout template</button>
+</form>
