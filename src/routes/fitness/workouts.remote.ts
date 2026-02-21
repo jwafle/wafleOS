@@ -10,7 +10,7 @@ import {
 } from '$lib/server/db/schema';
 import { z } from 'zod';
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
-import { error, redirect } from '@sveltejs/kit';
+import { error, invalid, redirect } from '@sveltejs/kit';
 
 const idField = z
 	.string()
@@ -19,7 +19,54 @@ const idField = z
 	.refine((value) => Number.isInteger(value) && value > 0, {
 		message: 'Must be a positive integer'
 	});
+
+const metricValueField = z.string().optional();
 const indexOffset = 1_000_000;
+const epochMsNow = sql`CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`;
+
+type ExerciseMeasure = 'duration' | 'reps' | 'reps_and_weight';
+
+type ParsedInt = { valid: true; value: number | null } | { valid: false };
+type ParsedFloat = { valid: true; value: number | null } | { valid: false };
+
+const parseOptionalPositiveInt = (value: string | undefined): ParsedInt => {
+	const trimmed = value?.trim() ?? '';
+	if (trimmed === '') {
+		return { valid: true, value: null };
+	}
+
+	const parsed = Number(trimmed);
+	if (!Number.isInteger(parsed) || parsed <= 0) {
+		return { valid: false };
+	}
+
+	return { valid: true, value: parsed };
+};
+
+const parseOptionalPositiveFloat = (value: string | undefined): ParsedFloat => {
+	const trimmed = value?.trim() ?? '';
+	if (trimmed === '') {
+		return { valid: true, value: null };
+	}
+
+	const parsed = Number(trimmed);
+	if (!Number.isFinite(parsed) || parsed <= 0) {
+		return { valid: false };
+	}
+
+	return { valid: true, value: parsed };
+};
+
+const missingMetricMessage = (measure: ExerciseMeasure) => {
+	switch (measure) {
+		case 'duration':
+			return 'Duration is required to complete this set';
+		case 'reps':
+			return 'Reps are required to complete this set';
+		case 'reps_and_weight':
+			return 'Reps and weight are required to complete this set';
+	}
+};
 
 const reindexSetGroups = async (
 	tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -63,7 +110,7 @@ export const startWorkout = form(z.object({ templateId: idField }), async ({ tem
 	await db.transaction(async (tx) => {
 		const [newWorkout] = await tx
 			.insert(workoutsTable)
-			.values({ template: templateId })
+			.values({ template: templateId, startedAt: epochMsNow })
 			.returning({ id: workoutsTable.id });
 		workoutId = newWorkout.id;
 
@@ -271,6 +318,70 @@ export const addSetToGroup = form(
 	}
 );
 
+export const updateSetMetrics = form(
+	z.object({
+		workoutId: idField,
+		setId: idField,
+		reps: metricValueField,
+		weight: metricValueField,
+		duration: metricValueField
+	}),
+	async ({ workoutId, setId, reps, weight, duration }, issue) => {
+		const set = await db.query.setsTable.findFirst({
+			where: and(eq(setsTable.id, setId), eq(setsTable.workout, workoutId)),
+			columns: { id: true },
+			with: {
+				exercise: {
+					columns: {
+						measured_in: true
+					}
+				}
+			}
+		});
+
+		if (!set) {
+			error(404, { message: 'Set not found for workout' });
+		}
+
+		const parsedReps = parseOptionalPositiveInt(reps);
+		if (!parsedReps.valid) {
+			invalid(issue.reps('Reps must be a positive integer'));
+		}
+
+		const parsedWeight = parseOptionalPositiveFloat(weight);
+		if (!parsedWeight.valid) {
+			invalid(issue.weight('Weight must be a positive number'));
+		}
+
+		const parsedDuration = parseOptionalPositiveInt(duration);
+		if (!parsedDuration.valid) {
+			invalid(issue.duration('Duration must be a positive integer in seconds'));
+		}
+
+		const measure = set.exercise.measured_in;
+		if (measure === 'duration') {
+			await db
+				.update(setsTable)
+				.set({ duration: parsedDuration.value, reps: null, weight: null })
+				.where(eq(setsTable.id, setId));
+			return;
+		}
+
+		if (measure === 'reps') {
+			await db
+				.update(setsTable)
+				.set({ reps: parsedReps.value, weight: null, duration: null })
+				.where(eq(setsTable.id, setId));
+			return;
+		}
+
+		await db
+			.update(setsTable)
+			.set({ reps: parsedReps.value, weight: parsedWeight.value, duration: null })
+			.where(eq(setsTable.id, setId));
+	}
+);
+
 export const removeSetFromGroup = form(
 	z.object({
 		workoutId: idField,
@@ -321,21 +432,102 @@ export const removeSetFromGroup = form(
 export const toggleSetComplete = form(
 	z.object({
 		workoutId: idField,
-		setId: idField
+		setId: idField,
+		reps: metricValueField,
+		weight: metricValueField,
+		duration: metricValueField
 	}),
-	async ({ workoutId, setId }) => {
+	async ({ workoutId, setId, reps, weight, duration }, issue) => {
 		const set = await db.query.setsTable.findFirst({
 			where: and(eq(setsTable.id, setId), eq(setsTable.workout, workoutId)),
-			columns: { id: true, finishedAt: true }
+			columns: {
+				id: true,
+				finishedAt: true,
+				reps: true,
+				weight: true,
+				duration: true
+			},
+			with: {
+				exercise: {
+					columns: {
+						measured_in: true
+					}
+				}
+			}
 		});
 
 		if (!set) {
 			error(404, { message: 'Set not found for workout' });
 		}
 
+		if (set.finishedAt) {
+			await db.update(setsTable).set({ finishedAt: null }).where(eq(setsTable.id, setId));
+			return;
+		}
+
+		const parsedReps = parseOptionalPositiveInt(reps);
+		if (!parsedReps.valid) {
+			invalid(issue.reps('Reps must be a positive integer'));
+		}
+
+		const parsedWeight = parseOptionalPositiveFloat(weight);
+		if (!parsedWeight.valid) {
+			invalid(issue.weight('Weight must be a positive number'));
+		}
+
+		const parsedDuration = parseOptionalPositiveInt(duration);
+		if (!parsedDuration.valid) {
+			invalid(issue.duration('Duration must be a positive integer in seconds'));
+		}
+
+		let nextReps = set.reps;
+		let nextWeight = set.weight;
+		let nextDuration = set.duration;
+
+		if (parsedReps.value !== null) {
+			nextReps = parsedReps.value;
+		}
+
+		if (parsedWeight.value !== null) {
+			nextWeight = parsedWeight.value;
+		}
+
+		if (parsedDuration.value !== null) {
+			nextDuration = parsedDuration.value;
+		}
+
+		const measure = set.exercise.measured_in;
+		if (measure === 'duration' && nextDuration === null) {
+			invalid(issue.setId(missingMetricMessage(measure)));
+		}
+
+		if (measure === 'reps' && nextReps === null) {
+			invalid(issue.setId(missingMetricMessage(measure)));
+		}
+
+		if (measure === 'reps_and_weight' && (nextReps === null || nextWeight === null)) {
+			invalid(issue.setId(missingMetricMessage(measure)));
+		}
+
+		if (measure === 'duration') {
+			await db
+				.update(setsTable)
+				.set({ duration: nextDuration, reps: null, weight: null, finishedAt: epochMsNow })
+				.where(eq(setsTable.id, setId));
+			return;
+		}
+
+		if (measure === 'reps') {
+			await db
+				.update(setsTable)
+				.set({ reps: nextReps, weight: null, duration: null, finishedAt: epochMsNow })
+				.where(eq(setsTable.id, setId));
+			return;
+		}
+
 		await db
 			.update(setsTable)
-			.set({ finishedAt: set.finishedAt ? null : sql`(unixepoch())` })
+			.set({ reps: nextReps, weight: nextWeight, duration: null, finishedAt: epochMsNow })
 			.where(eq(setsTable.id, setId));
 	}
 );
@@ -356,7 +548,7 @@ export const toggleWorkoutComplete = form(
 
 		await db
 			.update(workoutsTable)
-			.set({ finishedAt: workout.finishedAt ? null : sql`(unixepoch())` })
+			.set({ finishedAt: workout.finishedAt ? null : epochMsNow })
 			.where(eq(workoutsTable.id, workoutId));
 	}
 );

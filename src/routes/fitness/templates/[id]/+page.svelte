@@ -36,6 +36,9 @@
 		<form {...renameTemplate}>
 			<input type="hidden" name="templateId" value={template.id} />
 			<input {...renameTemplate.fields.name.as('text')} />
+			{#if renameTemplate.fields.name.issues()?.[0]}
+				<p>{renameTemplate.fields.name.issues()?.[0]?.message}</p>
+			{/if}
 			<button>Rename template</button>
 		</form>
 

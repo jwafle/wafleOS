@@ -9,7 +9,7 @@ import {
 } from '$lib/server/db/schema';
 import { z } from 'zod';
 import { and, asc, desc, eq, ne, sql } from 'drizzle-orm';
-import { error, redirect } from '@sveltejs/kit';
+import { error, invalid, redirect } from '@sveltejs/kit';
 
 const idField = z
 	.string()
@@ -34,7 +34,9 @@ const reindexSetGroups = async (tx: Tx, templateId: number, orderedSetGroupIds: 
 		await tx
 			.update(templateSetGroupsTable)
 			.set({ index })
-			.where(and(eq(templateSetGroupsTable.id, id), eq(templateSetGroupsTable.template, templateId)));
+			.where(
+				and(eq(templateSetGroupsTable.id, id), eq(templateSetGroupsTable.template, templateId))
+			);
 	}
 };
 
@@ -66,30 +68,33 @@ export const getTemplatesPaginated = query(z.number().int().min(0), async (offse
 	return templates;
 });
 
-export const createTemplate = form(z.object({ name: templateNameField }), async ({ name }) => {
-	const existingTemplate = await db.query.templatesTable.findFirst({
-		where: eq(templatesTable.name, name),
-		columns: { id: true }
-	});
+export const createTemplate = form(
+	z.object({ name: templateNameField }),
+	async ({ name }, issue) => {
+		const existingTemplate = await db.query.templatesTable.findFirst({
+			where: eq(templatesTable.name, name),
+			columns: { id: true }
+		});
 
-	if (existingTemplate) {
-		error(409, { message: 'Template name already exists' });
+		if (existingTemplate) {
+			invalid(issue.name('Template name already exists'));
+		}
+
+		const [newTemplate] = await db
+			.insert(templatesTable)
+			.values({ name })
+			.returning({ id: templatesTable.id });
+
+		redirect(303, `/fitness/templates/${newTemplate.id}`);
 	}
-
-	const [newTemplate] = await db
-		.insert(templatesTable)
-		.values({ name })
-		.returning({ id: templatesTable.id });
-
-	redirect(303, `/fitness/templates/${newTemplate.id}`);
-});
+);
 
 export const renameTemplate = form(
 	z.object({
 		templateId: idField,
 		name: templateNameField
 	}),
-	async ({ templateId, name }) => {
+	async ({ templateId, name }, issue) => {
 		const template = await db.query.templatesTable.findFirst({
 			where: eq(templatesTable.id, templateId),
 			columns: { id: true }
@@ -105,7 +110,7 @@ export const renameTemplate = form(
 		});
 
 		if (conflictingTemplate) {
-			error(409, { message: 'Template name already exists' });
+			invalid(issue.name('Template name already exists'));
 		}
 
 		await db.update(templatesTable).set({ name }).where(eq(templatesTable.id, templateId));

@@ -15,6 +15,13 @@
       "when": 1770515406298,
       "tag": "0001_luxuriant_korvac",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1771567000000,
+      "tag": "0002_timestamp_ms_fix",
+      "breakpoints": true
     }
   ]
 }

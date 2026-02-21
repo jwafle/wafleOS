@@ -31,5 +31,8 @@
 
 <form {...createTemplate}>
 	<input type="hidden" name="name" value="New Template" />
+	{#if createTemplate.fields.name.issues()?.[0]}
+		<p>{createTemplate.fields.name.issues()?.[0]?.message}</p>
+	{/if}
 	<button>Create a new workout template</button>
 </form>
