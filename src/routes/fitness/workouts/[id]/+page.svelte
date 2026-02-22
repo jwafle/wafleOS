@@ -13,11 +13,104 @@
 	} from '../../workouts.remote';
 	import type { PageProps } from './$types';
 
+	type WorkoutWithGroups = {
+		setGroups: Array<{
+			restDuration: number | null;
+			sets: Array<{
+				finishedAt: unknown;
+			}>;
+		}>;
+	};
+
 	let { data }: PageProps = $props();
 	let addSetGroupDialog: HTMLDialogElement | null = $state(null);
+	let nowMs = $state(0);
 
 	const workoutQuery = $derived(getWorkoutById(data.workoutId));
 	const exercisesQuery = getExercisesForPicker();
+
+	const toEpochMs = (value: unknown): number | null => {
+		if (value === null || value === undefined) {
+			return null;
+		}
+
+		if (value instanceof Date) {
+			return value.getTime();
+		}
+
+		if (typeof value === 'number' && Number.isFinite(value)) {
+			return value;
+		}
+
+		if (typeof value === 'string') {
+			const asNumber = Number(value);
+			if (Number.isFinite(asNumber)) {
+				return asNumber;
+			}
+
+			const asDate = Date.parse(value);
+			if (!Number.isNaN(asDate)) {
+				return asDate;
+			}
+		}
+
+		return null;
+	};
+
+	const formatClock = (totalSeconds: number) => {
+		const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+		const hours = Math.floor(safeSeconds / 3600)
+			.toString()
+			.padStart(2, '0');
+		const minutes = Math.floor((safeSeconds % 3600) / 60)
+			.toString()
+			.padStart(2, '0');
+		const seconds = Math.floor(safeSeconds % 60)
+			.toString()
+			.padStart(2, '0');
+
+		return `${hours}:${minutes}:${seconds}`;
+	};
+
+	const formatMsAsClock = (milliseconds: number) => formatClock(milliseconds / 1000);
+
+	const getLatestCompletedSetInfo = (workout: WorkoutWithGroups) => {
+		let latest: { finishedAtMs: number; restDurationSeconds: number } | null = null;
+
+		for (const setGroup of workout.setGroups) {
+			for (const set of setGroup.sets) {
+				const finishedAtMs = toEpochMs(set.finishedAt);
+				if (finishedAtMs === null) {
+					continue;
+				}
+
+				if (!latest || finishedAtMs > latest.finishedAtMs) {
+					latest = {
+						finishedAtMs,
+						restDurationSeconds: Math.max(0, setGroup.restDuration ?? 0)
+					};
+				}
+			}
+		}
+
+		return latest;
+	};
+
+	$effect(() => {
+		if (typeof window === 'undefined') {
+			return;
+		}
+
+		nowMs = Date.now();
+
+		const intervalId = window.setInterval(() => {
+			nowMs = Date.now();
+		}, 1000);
+
+		return () => {
+			window.clearInterval(intervalId);
+		};
+	});
 </script>
 
 {#if workoutQuery.error}
@@ -32,7 +125,29 @@
 	{#if !workout}
 		<p>Workout not found.</p>
 	{:else}
+		{@const workoutStartedAtMs = toEpochMs(workout.startedAt) ?? 0}
+		{@const workoutFinishedAtMs = toEpochMs(workout.finishedAt)}
+		{@const wallClockReferenceMs = workoutFinishedAtMs ?? nowMs}
+		{@const wallClockElapsedMs = Math.max(0, wallClockReferenceMs - workoutStartedAtMs)}
+		{@const latestCompletedSetInfo = getLatestCompletedSetInfo(workout)}
+		{@const restEndsAtMs =
+			latestCompletedSetInfo
+				? latestCompletedSetInfo.finishedAtMs + latestCompletedSetInfo.restDurationSeconds * 1000
+				: null}
+		{@const restRemainingMs = restEndsAtMs === null ? null : Math.max(0, restEndsAtMs - nowMs)}
+
 		<h1>{workout.template?.name || 'unknown template name'}</h1>
+
+		<section class="timer-region">
+			<div class="timer-card">
+				<p>Workout time</p>
+				<p>{formatMsAsClock(wallClockElapsedMs)}</p>
+			</div>
+			<div class="timer-card">
+				<p>Rest timer</p>
+				<p>{restRemainingMs === null ? '--:--:--' : formatMsAsClock(restRemainingMs)}</p>
+			</div>
+		</section>
 
 		<form {...toggleWorkoutComplete}>
 			<input type="hidden" name="workoutId" value={workout.id} />
@@ -120,3 +235,26 @@
 		{/each}
 	{/if}
 {/if}
+
+<style>
+	.timer-region {
+		position: sticky;
+		top: 0;
+		z-index: 10;
+		display: flex;
+		gap: 0.75rem;
+		margin: 0 0 1rem;
+		padding: 0.75rem;
+		border: 1px solid #ddd;
+		border-radius: 0.5rem;
+		background: #fff;
+	}
+
+	.timer-card {
+		min-width: 10rem;
+	}
+
+	.timer-card p {
+		margin: 0;
+	}
+</style>
