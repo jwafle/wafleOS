@@ -448,9 +448,7 @@
 								</form>
 							{:else if setGroup.exercise.measured_in === 'reps'}
 								<form
-									{...updateSetMetrics
-										.for(`set-${set.id}-reps`)
-										.enhance(({ submit }) => submit())}
+									{...updateSetMetrics.for(`set-${set.id}-reps`).enhance(({ submit }) => submit())}
 									class="metric-field"
 								>
 									<input type="hidden" name="workoutId" value={workout.id} />
@@ -469,9 +467,7 @@
 								</form>
 							{:else}
 								<form
-									{...updateSetMetrics
-										.for(`set-${set.id}-reps`)
-										.enhance(({ submit }) => submit())}
+									{...updateSetMetrics.for(`set-${set.id}-reps`).enhance(({ submit }) => submit())}
 									class="metric-field"
 								>
 									<input type="hidden" name="workoutId" value={workout.id} />
@@ -534,64 +530,3 @@
 		{/each}
 	{/if}
 {/if}
-
-<style>
-	.timer-region {
-		position: sticky;
-		top: 0;
-		z-index: 10;
-		display: flex;
-		gap: 0.75rem;
-		margin: 0 0 1rem;
-		padding: 0.75rem;
-		border: 1px solid #ddd;
-		border-radius: 0.5rem;
-		background: #fff;
-	}
-
-	.timer-card {
-		min-width: 10rem;
-	}
-
-	.timer-card p {
-		margin: 0;
-	}
-
-	.timer-subtext {
-		margin-top: 0.25rem;
-		font-size: 0.85rem;
-		opacity: 0.8;
-	}
-
-	.set-row {
-		margin-bottom: 0.75rem;
-	}
-
-	.set-complete-form {
-		margin: 0.35rem 0;
-	}
-
-	.set-error {
-		margin: 0.35rem 0 0;
-		color: #b42318;
-		font-size: 0.9rem;
-	}
-
-	.metric-inputs {
-		display: flex;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-	}
-
-	.metric-field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.metric-field label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-</style>
