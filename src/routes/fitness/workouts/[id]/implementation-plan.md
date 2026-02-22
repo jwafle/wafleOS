@@ -106,9 +106,9 @@ No template-page changes in this phase.
   - [x] Add lbs label for weight
   - [x] Prefill values from most recent completed same-exercise group at same set index
 
-- [ ] **8) UX for validation failures**
-  - [ ] If completion is blocked (missing required metrics), show inline error for that set
-  - [ ] Keep button and form interactions clear and recoverable
+- [x] **8) UX for validation failures**
+  - [x] If completion is blocked (missing required metrics), show inline error for that set
+  - [x] Keep button and form interactions clear and recoverable
 
 - [ ] **9) Notifications/vibration**
   - [ ] Add best-effort permission request flow for notifications

@@ -418,6 +418,7 @@
 
 				{#each setGroup.sets as set, setIndex (set.id)}
 					{@const metricPrefillValues = getSetMetricPrefillValues(workout, setGroup, set)}
+					{@const toggleSetCompleteForm = toggleSetComplete.for(set.id)}
 					<div class="set-row">
 						<p>Set {setIndex + 1}</p>
 						<p>{set.type}</p>
@@ -510,10 +511,15 @@
 							{/if}
 						</div>
 
-						<form {...toggleSetComplete.for(set.id)} class="set-complete-form">
+						<form {...toggleSetCompleteForm} class="set-complete-form">
 							<input type="hidden" name="workoutId" value={workout.id} />
 							<input type="hidden" name="setId" value={set.id} />
 							<button>{set.finishedAt ? 'Mark incomplete' : 'Mark complete'}</button>
+							{#if toggleSetCompleteForm.fields.setId.issues()?.[0]}
+								<p class="set-error" role="alert">
+									{toggleSetCompleteForm.fields.setId.issues()?.[0]?.message}
+								</p>
+							{/if}
 						</form>
 
 						<form {...removeSetFromGroup.for(set.id)}>
@@ -563,6 +569,12 @@
 
 	.set-complete-form {
 		margin: 0.35rem 0;
+	}
+
+	.set-error {
+		margin: 0.35rem 0 0;
+		color: #b42318;
+		font-size: 0.9rem;
 	}
 
 	.metric-inputs {
