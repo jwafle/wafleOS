@@ -329,7 +329,12 @@ export const updateSetMetrics = form(
 	async ({ workoutId, setId, reps, weight, duration }, issue) => {
 		const set = await db.query.setsTable.findFirst({
 			where: and(eq(setsTable.id, setId), eq(setsTable.workout, workoutId)),
-			columns: { id: true },
+			columns: {
+				id: true,
+				reps: true,
+				weight: true,
+				duration: true
+			},
 			with: {
 				exercise: {
 					columns: {
@@ -358,26 +363,35 @@ export const updateSetMetrics = form(
 			invalid(issue.duration('Duration must be a positive integer in seconds'));
 		}
 
+		const repsProvided = reps !== undefined;
+		const weightProvided = weight !== undefined;
+		const durationProvided = duration !== undefined;
+
 		const measure = set.exercise.measured_in;
 		if (measure === 'duration') {
+			const nextDuration = durationProvided ? parsedDuration.value : set.duration;
 			await db
 				.update(setsTable)
-				.set({ duration: parsedDuration.value, reps: null, weight: null })
+				.set({ duration: nextDuration, reps: null, weight: null })
 				.where(eq(setsTable.id, setId));
 			return;
 		}
 
 		if (measure === 'reps') {
+			const nextReps = repsProvided ? parsedReps.value : set.reps;
 			await db
 				.update(setsTable)
-				.set({ reps: parsedReps.value, weight: null, duration: null })
+				.set({ reps: nextReps, weight: null, duration: null })
 				.where(eq(setsTable.id, setId));
 			return;
 		}
 
+		const nextReps = repsProvided ? parsedReps.value : set.reps;
+		const nextWeight = weightProvided ? parsedWeight.value : set.weight;
+
 		await db
 			.update(setsTable)
-			.set({ reps: parsedReps.value, weight: parsedWeight.value, duration: null })
+			.set({ reps: nextReps, weight: nextWeight, duration: null })
 			.where(eq(setsTable.id, setId));
 	}
 );

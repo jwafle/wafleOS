@@ -48,7 +48,7 @@ No template-page changes in this phase.
   - `reps` => reps input
   - `reps_and_weight` => reps + weight inputs
 - Weight supports decimals and is labeled lbs
-- Save the set metrics on the set being marked complete or incomplete
+- Save the set metrics on the set metric input blur (losing focus)
 - Completion is blocked if required metric fields are missing
 - Inputs should prefill from the most recently completed set group of the **same exercise**, matching by set index
 
@@ -102,7 +102,7 @@ No template-page changes in this phase.
 
 - [x] **7) Metric input UI in set rows**
   - [x] Render conditional inputs per set by `exercise.measured_in`
-  - [x] Save set metrics on the set being marked complete or incomplete
+  - [x] Save set metrics on the set metric input blur
   - [x] Add lbs label for weight
   - [x] Prefill values from most recent completed same-exercise group at same set index
 

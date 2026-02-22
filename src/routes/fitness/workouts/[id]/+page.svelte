@@ -9,7 +9,8 @@
 		removeSetFromGroup,
 		removeSetGroup,
 		toggleSetComplete,
-		toggleWorkoutComplete
+		toggleWorkoutComplete,
+		updateSetMetrics
 	} from '../../workouts.remote';
 	import type { PageProps } from './$types';
 
@@ -214,7 +215,10 @@
 		} | null = null;
 
 		for (const candidateSetGroup of workout.setGroups) {
-			if (candidateSetGroup.exercise.id !== setGroup.exercise.id || candidateSetGroup.id === setGroup.id) {
+			if (
+				candidateSetGroup.exercise.id !== setGroup.exercise.id ||
+				candidateSetGroup.id === setGroup.id
+			) {
 				continue;
 			}
 
@@ -223,7 +227,9 @@
 				continue;
 			}
 
-			const matchingSet = candidateSetGroup.sets.find((candidateSet) => candidateSet.index === setIndex);
+			const matchingSet = candidateSetGroup.sets.find(
+				(candidateSet) => candidateSet.index === setIndex
+			);
 			if (!matchingSet) {
 				continue;
 			}
@@ -244,13 +250,26 @@
 		setGroup: WorkoutSetGroup,
 		set: WorkoutSetGroup['sets'][number]
 	) => {
-		const sameExerciseCompletedSet = getMostRecentCompletedSameExerciseSet(workout, setGroup, set.index);
+		const sameExerciseCompletedSet = getMostRecentCompletedSameExerciseSet(
+			workout,
+			setGroup,
+			set.index
+		);
 
 		return {
 			reps: toMetricInputValue(set.reps ?? sameExerciseCompletedSet?.reps ?? null),
 			weight: toMetricInputValue(set.weight ?? sameExerciseCompletedSet?.weight ?? null),
 			duration: toMetricInputValue(set.duration ?? sameExerciseCompletedSet?.duration ?? null)
 		};
+	};
+
+	const autosaveMetricOnBlur = (event: FocusEvent) => {
+		const input = event.currentTarget;
+		if (!(input instanceof HTMLInputElement)) {
+			return;
+		}
+
+		input.form?.requestSubmit();
 	};
 
 	$effect(() => {
@@ -404,13 +423,17 @@
 						<p>{set.type}</p>
 						<p>{set.finishedAt ? 'complete' : 'incomplete'}</p>
 
-						<form {...toggleSetComplete.for(set.id)} class="set-metric-form">
-							<input type="hidden" name="workoutId" value={workout.id} />
-							<input type="hidden" name="setId" value={set.id} />
-
-							<div class="metric-inputs">
-								{#if setGroup.exercise.measured_in === 'duration'}
-									<label class="metric-field">
+						<div class="metric-inputs">
+							{#if setGroup.exercise.measured_in === 'duration'}
+								<form
+									{...updateSetMetrics
+										.for(`set-${set.id}-duration`)
+										.enhance(({ submit }) => submit())}
+									class="metric-field"
+								>
+									<input type="hidden" name="workoutId" value={workout.id} />
+									<input type="hidden" name="setId" value={set.id} />
+									<label>
 										Duration (sec)
 										<input
 											type="number"
@@ -418,10 +441,20 @@
 											min="1"
 											step="1"
 											value={metricPrefillValues.duration}
+											onblur={autosaveMetricOnBlur}
 										/>
 									</label>
-								{:else if setGroup.exercise.measured_in === 'reps'}
-									<label class="metric-field">
+								</form>
+							{:else if setGroup.exercise.measured_in === 'reps'}
+								<form
+									{...updateSetMetrics
+										.for(`set-${set.id}-reps`)
+										.enhance(({ submit }) => submit())}
+									class="metric-field"
+								>
+									<input type="hidden" name="workoutId" value={workout.id} />
+									<input type="hidden" name="setId" value={set.id} />
+									<label>
 										Reps
 										<input
 											type="number"
@@ -429,10 +462,20 @@
 											min="1"
 											step="1"
 											value={metricPrefillValues.reps}
+											onblur={autosaveMetricOnBlur}
 										/>
 									</label>
-								{:else}
-									<label class="metric-field">
+								</form>
+							{:else}
+								<form
+									{...updateSetMetrics
+										.for(`set-${set.id}-reps`)
+										.enhance(({ submit }) => submit())}
+									class="metric-field"
+								>
+									<input type="hidden" name="workoutId" value={workout.id} />
+									<input type="hidden" name="setId" value={set.id} />
+									<label>
 										Reps
 										<input
 											type="number"
@@ -440,9 +483,19 @@
 											min="1"
 											step="1"
 											value={metricPrefillValues.reps}
+											onblur={autosaveMetricOnBlur}
 										/>
 									</label>
-									<label class="metric-field">
+								</form>
+								<form
+									{...updateSetMetrics
+										.for(`set-${set.id}-weight`)
+										.enhance(({ submit }) => submit())}
+									class="metric-field"
+								>
+									<input type="hidden" name="workoutId" value={workout.id} />
+									<input type="hidden" name="setId" value={set.id} />
+									<label>
 										Weight (lbs)
 										<input
 											type="number"
@@ -450,11 +503,16 @@
 											min="0.1"
 											step="0.1"
 											value={metricPrefillValues.weight}
+											onblur={autosaveMetricOnBlur}
 										/>
 									</label>
-								{/if}
-							</div>
+								</form>
+							{/if}
+						</div>
 
+						<form {...toggleSetComplete.for(set.id)} class="set-complete-form">
+							<input type="hidden" name="workoutId" value={workout.id} />
+							<input type="hidden" name="setId" value={set.id} />
 							<button>{set.finishedAt ? 'Mark incomplete' : 'Mark complete'}</button>
 						</form>
 
@@ -503,10 +561,7 @@
 		margin-bottom: 0.75rem;
 	}
 
-	.set-metric-form {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+	.set-complete-form {
 		margin: 0.35rem 0;
 	}
 
@@ -517,6 +572,12 @@
 	}
 
 	.metric-field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.metric-field label {
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
