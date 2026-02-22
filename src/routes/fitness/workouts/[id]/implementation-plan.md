@@ -100,11 +100,11 @@ No template-page changes in this phase.
   - [x] Skip fully completed groups in chain when determining practical next rotation behavior
   - [x] Keep timer trigger still tied to “last completed set’s group rest duration”
 
-- [ ] **7) Metric input UI in set rows**
-  - [ ] Render conditional inputs per set by `exercise.measured_in`
-  - [ ] Save set metrics on the set being marked complete or incomplete
-  - [ ] Add lbs label for weight
-  - [ ] Prefill values from most recent completed same-exercise group at same set index
+- [x] **7) Metric input UI in set rows**
+  - [x] Render conditional inputs per set by `exercise.measured_in`
+  - [x] Save set metrics on the set being marked complete or incomplete
+  - [x] Add lbs label for weight
+  - [x] Prefill values from most recent completed same-exercise group at same set index
 
 - [ ] **8) UX for validation failures**
   - [ ] If completion is blocked (missing required metrics), show inline error for that set

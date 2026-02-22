@@ -19,10 +19,17 @@
 		isSuperset: boolean;
 		restDuration: number | null;
 		exercise: {
+			id: number;
 			name: string;
+			measured_in: 'duration' | 'reps' | 'reps_and_weight';
 		};
 		sets: Array<{
 			id: number;
+			index: number;
+			type: 'warmup' | 'working';
+			reps: number | null;
+			weight: number | null;
+			duration: number | null;
 			finishedAt: unknown;
 		}>;
 	};
@@ -173,6 +180,79 @@
 		return latest;
 	};
 
+	const toMetricInputValue = (value: number | null | undefined) =>
+		value === null || value === undefined ? '' : String(value);
+
+	const getSetGroupCompletionAtMs = (setGroup: WorkoutSetGroup) => {
+		if (setGroup.sets.length === 0) {
+			return null;
+		}
+
+		let latestCompletionAtMs = 0;
+		for (const set of setGroup.sets) {
+			const finishedAtMs = toEpochMs(set.finishedAt);
+			if (finishedAtMs === null) {
+				return null;
+			}
+
+			if (finishedAtMs > latestCompletionAtMs) {
+				latestCompletionAtMs = finishedAtMs;
+			}
+		}
+
+		return latestCompletionAtMs;
+	};
+
+	const getMostRecentCompletedSameExerciseSet = (
+		workout: WorkoutWithGroups,
+		setGroup: WorkoutSetGroup,
+		setIndex: number
+	) => {
+		let latestMatch: {
+			completionAtMs: number;
+			set: WorkoutSetGroup['sets'][number];
+		} | null = null;
+
+		for (const candidateSetGroup of workout.setGroups) {
+			if (candidateSetGroup.exercise.id !== setGroup.exercise.id || candidateSetGroup.id === setGroup.id) {
+				continue;
+			}
+
+			const completionAtMs = getSetGroupCompletionAtMs(candidateSetGroup);
+			if (completionAtMs === null) {
+				continue;
+			}
+
+			const matchingSet = candidateSetGroup.sets.find((candidateSet) => candidateSet.index === setIndex);
+			if (!matchingSet) {
+				continue;
+			}
+
+			if (!latestMatch || completionAtMs > latestMatch.completionAtMs) {
+				latestMatch = {
+					completionAtMs,
+					set: matchingSet
+				};
+			}
+		}
+
+		return latestMatch?.set ?? null;
+	};
+
+	const getSetMetricPrefillValues = (
+		workout: WorkoutWithGroups,
+		setGroup: WorkoutSetGroup,
+		set: WorkoutSetGroup['sets'][number]
+	) => {
+		const sameExerciseCompletedSet = getMostRecentCompletedSameExerciseSet(workout, setGroup, set.index);
+
+		return {
+			reps: toMetricInputValue(set.reps ?? sameExerciseCompletedSet?.reps ?? null),
+			weight: toMetricInputValue(set.weight ?? sameExerciseCompletedSet?.weight ?? null),
+			duration: toMetricInputValue(set.duration ?? sameExerciseCompletedSet?.duration ?? null)
+		};
+	};
+
 	$effect(() => {
 		if (typeof window === 'undefined') {
 			return;
@@ -318,14 +398,63 @@
 				</form>
 
 				{#each setGroup.sets as set, setIndex (set.id)}
-					<div>
+					{@const metricPrefillValues = getSetMetricPrefillValues(workout, setGroup, set)}
+					<div class="set-row">
 						<p>Set {setIndex + 1}</p>
 						<p>{set.type}</p>
 						<p>{set.finishedAt ? 'complete' : 'incomplete'}</p>
 
-						<form {...toggleSetComplete.for(set.id)}>
+						<form {...toggleSetComplete.for(set.id)} class="set-metric-form">
 							<input type="hidden" name="workoutId" value={workout.id} />
 							<input type="hidden" name="setId" value={set.id} />
+
+							<div class="metric-inputs">
+								{#if setGroup.exercise.measured_in === 'duration'}
+									<label class="metric-field">
+										Duration (sec)
+										<input
+											type="number"
+											name="duration"
+											min="1"
+											step="1"
+											value={metricPrefillValues.duration}
+										/>
+									</label>
+								{:else if setGroup.exercise.measured_in === 'reps'}
+									<label class="metric-field">
+										Reps
+										<input
+											type="number"
+											name="reps"
+											min="1"
+											step="1"
+											value={metricPrefillValues.reps}
+										/>
+									</label>
+								{:else}
+									<label class="metric-field">
+										Reps
+										<input
+											type="number"
+											name="reps"
+											min="1"
+											step="1"
+											value={metricPrefillValues.reps}
+										/>
+									</label>
+									<label class="metric-field">
+										Weight (lbs)
+										<input
+											type="number"
+											name="weight"
+											min="0.1"
+											step="0.1"
+											value={metricPrefillValues.weight}
+										/>
+									</label>
+								{/if}
+							</div>
+
 							<button>{set.finishedAt ? 'Mark incomplete' : 'Mark complete'}</button>
 						</form>
 
@@ -368,5 +497,28 @@
 		margin-top: 0.25rem;
 		font-size: 0.85rem;
 		opacity: 0.8;
+	}
+
+	.set-row {
+		margin-bottom: 0.75rem;
+	}
+
+	.set-metric-form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin: 0.35rem 0;
+	}
+
+	.metric-inputs {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.metric-field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
 	}
 </style>

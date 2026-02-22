@@ -460,11 +460,6 @@ export const toggleSetComplete = form(
 			error(404, { message: 'Set not found for workout' });
 		}
 
-		if (set.finishedAt) {
-			await db.update(setsTable).set({ finishedAt: null }).where(eq(setsTable.id, setId));
-			return;
-		}
-
 		const parsedReps = parseOptionalPositiveInt(reps);
 		if (!parsedReps.valid) {
 			invalid(issue.reps('Reps must be a positive integer'));
@@ -497,22 +492,26 @@ export const toggleSetComplete = form(
 		}
 
 		const measure = set.exercise.measured_in;
-		if (measure === 'duration' && nextDuration === null) {
-			invalid(issue.setId(missingMetricMessage(measure)));
-		}
+		const nextFinishedAt = set.finishedAt ? null : epochMsNow;
 
-		if (measure === 'reps' && nextReps === null) {
-			invalid(issue.setId(missingMetricMessage(measure)));
-		}
+		if (!set.finishedAt) {
+			if (measure === 'duration' && nextDuration === null) {
+				invalid(issue.setId(missingMetricMessage(measure)));
+			}
 
-		if (measure === 'reps_and_weight' && (nextReps === null || nextWeight === null)) {
-			invalid(issue.setId(missingMetricMessage(measure)));
+			if (measure === 'reps' && nextReps === null) {
+				invalid(issue.setId(missingMetricMessage(measure)));
+			}
+
+			if (measure === 'reps_and_weight' && (nextReps === null || nextWeight === null)) {
+				invalid(issue.setId(missingMetricMessage(measure)));
+			}
 		}
 
 		if (measure === 'duration') {
 			await db
 				.update(setsTable)
-				.set({ duration: nextDuration, reps: null, weight: null, finishedAt: epochMsNow })
+				.set({ duration: nextDuration, reps: null, weight: null, finishedAt: nextFinishedAt })
 				.where(eq(setsTable.id, setId));
 			return;
 		}
@@ -520,14 +519,14 @@ export const toggleSetComplete = form(
 		if (measure === 'reps') {
 			await db
 				.update(setsTable)
-				.set({ reps: nextReps, weight: null, duration: null, finishedAt: epochMsNow })
+				.set({ reps: nextReps, weight: null, duration: null, finishedAt: nextFinishedAt })
 				.where(eq(setsTable.id, setId));
 			return;
 		}
 
 		await db
 			.update(setsTable)
-			.set({ reps: nextReps, weight: nextWeight, duration: null, finishedAt: epochMsNow })
+			.set({ reps: nextReps, weight: nextWeight, duration: null, finishedAt: nextFinishedAt })
 			.where(eq(setsTable.id, setId));
 	}
 );
