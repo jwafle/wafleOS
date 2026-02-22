@@ -95,10 +95,10 @@ No template-page changes in this phase.
   - [x] Ignore set-incomplete events for timer changes
   - [x] Recompute in-page derived state for latest completion and countdown target
 
-- [ ] **6) Superset-aware rest sequencing support**
-  - [ ] Build helper logic over ordered set groups to evaluate active superset chains
-  - [ ] Skip fully completed groups in chain when determining practical next rotation behavior
-  - [ ] Keep timer trigger still tied to “last completed set’s group rest duration”
+- [x] **6) Superset-aware rest sequencing support**
+  - [x] Build helper logic over ordered set groups to evaluate active superset chains
+  - [x] Skip fully completed groups in chain when determining practical next rotation behavior
+  - [x] Keep timer trigger still tied to “last completed set’s group rest duration”
 
 - [ ] **7) Metric input UI in set rows**
   - [ ] Render conditional inputs per set by `exercise.measured_in`

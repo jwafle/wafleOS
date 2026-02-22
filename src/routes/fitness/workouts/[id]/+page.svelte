@@ -13,14 +13,22 @@
 	} from '../../workouts.remote';
 	import type { PageProps } from './$types';
 
-	type WorkoutWithGroups = {
-		setGroups: Array<{
-			restDuration: number | null;
-			sets: Array<{
-				id: number;
-				finishedAt: unknown;
-			}>;
+	type WorkoutSetGroup = {
+		id: number;
+		index: number;
+		isSuperset: boolean;
+		restDuration: number | null;
+		exercise: {
+			name: string;
+		};
+		sets: Array<{
+			id: number;
+			finishedAt: unknown;
 		}>;
+	};
+
+	type WorkoutWithGroups = {
+		setGroups: WorkoutSetGroup[];
 	};
 
 	let { data }: PageProps = $props();
@@ -77,10 +85,73 @@
 
 	const formatMsAsClock = (milliseconds: number) => formatClock(milliseconds / 1000);
 
-	const getLatestCompletedSetInfo = (workout: WorkoutWithGroups) => {
-		let latest: { setId: number; finishedAtMs: number; restDurationSeconds: number } | null = null;
+	const isSetFinished = (finishedAt: unknown) => toEpochMs(finishedAt) !== null;
 
-		for (const setGroup of workout.setGroups) {
+	const isSetGroupComplete = (setGroup: WorkoutSetGroup) =>
+		setGroup.sets.length > 0 && setGroup.sets.every((set) => isSetFinished(set.finishedAt));
+
+	const buildSupersetChains = (setGroups: WorkoutSetGroup[]) => {
+		const chains: number[][] = [];
+		let pointer = 0;
+
+		while (pointer < setGroups.length) {
+			const chain: number[] = [pointer];
+			while (setGroups[pointer]?.isSuperset && pointer + 1 < setGroups.length) {
+				pointer += 1;
+				chain.push(pointer);
+			}
+
+			chains.push(chain);
+			pointer += 1;
+		}
+
+		return chains;
+	};
+
+	const getPracticalNextSetGroupIndex = (
+		setGroups: WorkoutSetGroup[],
+		latestCompletedSetGroupIndex: number
+	) => {
+		if (setGroups.length === 0 || latestCompletedSetGroupIndex < 0) {
+			return null;
+		}
+
+		const supersetChains = buildSupersetChains(setGroups);
+		const currentChain =
+			supersetChains.find((chain) => chain.includes(latestCompletedSetGroupIndex)) ?? null;
+		if (!currentChain) {
+			return null;
+		}
+
+		const currentPosition = currentChain.indexOf(latestCompletedSetGroupIndex);
+		const chainLength = currentChain.length;
+		const hasIncompleteGroup = currentChain.some(
+			(chainIndex) => !isSetGroupComplete(setGroups[chainIndex])
+		);
+		if (!hasIncompleteGroup) {
+			return currentChain[0] ?? null;
+		}
+
+		for (let offset = 1; offset <= chainLength; offset += 1) {
+			const chainIndex = currentChain[(currentPosition + offset) % chainLength];
+			if (!isSetGroupComplete(setGroups[chainIndex])) {
+				return chainIndex;
+			}
+		}
+
+		return currentChain[0] ?? null;
+	};
+
+	const getLatestCompletedSetInfo = (workout: WorkoutWithGroups) => {
+		let latest: {
+			setId: number;
+			setGroupId: number;
+			setGroupIndex: number;
+			finishedAtMs: number;
+			restDurationSeconds: number;
+		} | null = null;
+
+		for (const [setGroupIndex, setGroup] of workout.setGroups.entries()) {
 			for (const set of setGroup.sets) {
 				const finishedAtMs = toEpochMs(set.finishedAt);
 				if (finishedAtMs === null) {
@@ -90,6 +161,8 @@
 				if (!latest || finishedAtMs > latest.finishedAtMs) {
 					latest = {
 						setId: set.id,
+						setGroupId: setGroup.id,
+						setGroupIndex,
 						finishedAtMs,
 						restDurationSeconds: Math.max(0, setGroup.restDuration ?? 0)
 					};
@@ -154,6 +227,13 @@
 		{@const workoutFinishedAtMs = toEpochMs(workout.finishedAt)}
 		{@const wallClockReferenceMs = workoutFinishedAtMs ?? nowMs}
 		{@const wallClockElapsedMs = Math.max(0, wallClockReferenceMs - workoutStartedAtMs)}
+		{@const latestCompletedSetInfo = getLatestCompletedSetInfo(workout)}
+		{@const practicalNextSetGroupIndex =
+			latestCompletedSetInfo === null
+				? null
+				: getPracticalNextSetGroupIndex(workout.setGroups, latestCompletedSetInfo.setGroupIndex)}
+		{@const practicalNextSetGroup =
+			practicalNextSetGroupIndex === null ? null : workout.setGroups[practicalNextSetGroupIndex]}
 		{@const restRemainingMs =
 			restTimerEndsAtMs === null ? null : Math.max(0, restTimerEndsAtMs - nowMs)}
 
@@ -167,6 +247,11 @@
 			<div class="timer-card">
 				<p>Rest timer</p>
 				<p>{restRemainingMs === null ? '--:--:--' : formatMsAsClock(restRemainingMs)}</p>
+				{#if practicalNextSetGroup && practicalNextSetGroupIndex !== null}
+					<p class="timer-subtext">
+						Up next: {practicalNextSetGroupIndex + 1}. {practicalNextSetGroup.exercise.name}
+					</p>
+				{/if}
 			</div>
 		</section>
 
@@ -277,5 +362,11 @@
 
 	.timer-card p {
 		margin: 0;
+	}
+
+	.timer-subtext {
+		margin-top: 0.25rem;
+		font-size: 0.85rem;
+		opacity: 0.8;
 	}
 </style>
