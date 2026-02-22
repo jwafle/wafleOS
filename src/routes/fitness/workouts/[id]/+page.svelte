@@ -17,6 +17,7 @@
 		setGroups: Array<{
 			restDuration: number | null;
 			sets: Array<{
+				id: number;
 				finishedAt: unknown;
 			}>;
 		}>;
@@ -25,6 +26,8 @@
 	let { data }: PageProps = $props();
 	let addSetGroupDialog: HTMLDialogElement | null = $state(null);
 	let nowMs = $state(0);
+	let restTimerEndsAtMs = $state<number | null>(null);
+	let lastAppliedCompletionAtMs = $state<number | null>(null);
 
 	const workoutQuery = $derived(getWorkoutById(data.workoutId));
 	const exercisesQuery = getExercisesForPicker();
@@ -75,7 +78,7 @@
 	const formatMsAsClock = (milliseconds: number) => formatClock(milliseconds / 1000);
 
 	const getLatestCompletedSetInfo = (workout: WorkoutWithGroups) => {
-		let latest: { finishedAtMs: number; restDurationSeconds: number } | null = null;
+		let latest: { setId: number; finishedAtMs: number; restDurationSeconds: number } | null = null;
 
 		for (const setGroup of workout.setGroups) {
 			for (const set of setGroup.sets) {
@@ -86,6 +89,7 @@
 
 				if (!latest || finishedAtMs > latest.finishedAtMs) {
 					latest = {
+						setId: set.id,
 						finishedAtMs,
 						restDurationSeconds: Math.max(0, setGroup.restDuration ?? 0)
 					};
@@ -111,6 +115,27 @@
 			window.clearInterval(intervalId);
 		};
 	});
+
+	$effect(() => {
+		const workout = workoutQuery.current;
+		if (!workout) {
+			return;
+		}
+
+		const latestCompletedSetInfo = getLatestCompletedSetInfo(workout);
+		if (!latestCompletedSetInfo) {
+			return;
+		}
+
+		if (
+			lastAppliedCompletionAtMs === null ||
+			latestCompletedSetInfo.finishedAtMs > lastAppliedCompletionAtMs
+		) {
+			lastAppliedCompletionAtMs = latestCompletedSetInfo.finishedAtMs;
+			restTimerEndsAtMs =
+				latestCompletedSetInfo.finishedAtMs + latestCompletedSetInfo.restDurationSeconds * 1000;
+		}
+	});
 </script>
 
 {#if workoutQuery.error}
@@ -129,12 +154,8 @@
 		{@const workoutFinishedAtMs = toEpochMs(workout.finishedAt)}
 		{@const wallClockReferenceMs = workoutFinishedAtMs ?? nowMs}
 		{@const wallClockElapsedMs = Math.max(0, wallClockReferenceMs - workoutStartedAtMs)}
-		{@const latestCompletedSetInfo = getLatestCompletedSetInfo(workout)}
-		{@const restEndsAtMs =
-			latestCompletedSetInfo
-				? latestCompletedSetInfo.finishedAtMs + latestCompletedSetInfo.restDurationSeconds * 1000
-				: null}
-		{@const restRemainingMs = restEndsAtMs === null ? null : Math.max(0, restEndsAtMs - nowMs)}
+		{@const restRemainingMs =
+			restTimerEndsAtMs === null ? null : Math.max(0, restTimerEndsAtMs - nowMs)}
 
 		<h1>{workout.template?.name || 'unknown template name'}</h1>
 

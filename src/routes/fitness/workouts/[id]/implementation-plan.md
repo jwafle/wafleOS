@@ -90,10 +90,10 @@ No template-page changes in this phase.
   - [x] Use client tick loop (1-second cadence) with cleanup on destroy
   - [x] Reconstruct rest timer from latest completed set on load
 
-- [ ] **5) Rest timer source-of-truth logic**
-  - [ ] On successful set completion, restart rest timer using that set group’s `restDuration`
-  - [ ] Ignore set-incomplete events for timer changes
-  - [ ] Recompute in-page derived state for latest completion and countdown target
+- [x] **5) Rest timer source-of-truth logic**
+  - [x] On successful set completion, restart rest timer using that set group’s `restDuration`
+  - [x] Ignore set-incomplete events for timer changes
+  - [x] Recompute in-page derived state for latest completion and countdown target
 
 - [ ] **6) Superset-aware rest sequencing support**
   - [ ] Build helper logic over ordered set groups to evaluate active superset chains
