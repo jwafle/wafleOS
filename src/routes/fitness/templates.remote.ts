@@ -20,6 +20,12 @@ const idField = z
 	});
 
 const templateNameField = z.string().trim().min(1, 'Template name is required').max(100);
+const exerciseNameField = z.string().trim().min(1, 'Exercise name is required').max(100);
+const measuredInField = z.enum(['duration', 'reps', 'reps_and_weight']);
+const closeAfterAddField = z
+	.string()
+	.optional()
+	.transform((value) => value === 'true');
 const indexOffset = 1_000_000;
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -52,6 +58,43 @@ const reindexSets = async (tx: Tx, setGroupId: number, orderedSetIds: number[]) 
 			.set({ index })
 			.where(and(eq(templateSetsTable.id, id), eq(templateSetsTable.templateSetGroup, setGroupId)));
 	}
+};
+
+const insertTemplateSetGroup = async (tx: Tx, templateId: number, exerciseId: number) => {
+	const template = await tx.query.templatesTable.findFirst({
+		where: eq(templatesTable.id, templateId),
+		columns: { id: true }
+	});
+
+	if (!template) {
+		error(404, { message: 'Template not found' });
+	}
+
+	const exercise = await tx.query.exercisesTable.findFirst({
+		where: eq(exercisesTable.id, exerciseId),
+		columns: { id: true }
+	});
+
+	if (!exercise) {
+		error(404, { message: 'Exercise not found' });
+	}
+
+	const existingSetGroup = await tx
+		.select({ index: templateSetGroupsTable.index })
+		.from(templateSetGroupsTable)
+		.where(eq(templateSetGroupsTable.template, templateId))
+		.orderBy(desc(templateSetGroupsTable.index))
+		.limit(1);
+
+	const nextIndex = existingSetGroup.at(0)?.index !== undefined ? existingSetGroup[0].index + 1 : 0;
+
+	await tx.insert(templateSetGroupsTable).values({
+		template: templateId,
+		exercise: exerciseId,
+		index: nextIndex,
+		restDuration: 150,
+		isSuperset: false
+	});
 };
 
 export const getTemplatesPaginated = query(z.number().int().min(0), async (offset) => {
@@ -142,6 +185,48 @@ export const getExercisesForPicker = query(async () => {
 		.orderBy(asc(exercisesTable.name));
 });
 
+export const createExerciseAndAddTemplateSetGroup = form(
+	z.object({
+		templateId: idField,
+		name: exerciseNameField,
+		measuredIn: measuredInField,
+		closeAfterAdd: closeAfterAddField
+	}),
+	async ({ templateId, name, measuredIn, closeAfterAdd }, issue) => {
+		const normalizedName = name.trim().toLowerCase();
+		const duplicateExercise = await db.query.exercisesTable.findFirst({
+			where: sql`lower(trim(${exercisesTable.name})) = ${normalizedName}`,
+			columns: { id: true }
+		});
+
+		if (duplicateExercise) {
+			invalid(issue.name('Exercise name already exists'));
+		}
+
+		try {
+			await db.transaction(async (tx) => {
+				const [newExercise] = await tx
+					.insert(exercisesTable)
+					.values({
+						name,
+						measured_in: measuredIn
+					})
+					.returning({ id: exercisesTable.id });
+
+				await insertTemplateSetGroup(tx, templateId, newExercise.id);
+			});
+		} catch (err) {
+			if (err instanceof Error && err.message.includes('exercise_name_ci_unique')) {
+				invalid(issue.name('Exercise name already exists'));
+			}
+
+			throw err;
+		}
+
+		return { closeDialog: closeAfterAdd };
+	}
+);
+
 export const addTemplateSetGroup = form(
 	z.object({
 		templateId: idField,
@@ -149,32 +234,7 @@ export const addTemplateSetGroup = form(
 	}),
 	async ({ templateId, exerciseId }) => {
 		await db.transaction(async (tx) => {
-			const template = await tx.query.templatesTable.findFirst({
-				where: eq(templatesTable.id, templateId),
-				columns: { id: true }
-			});
-
-			if (!template) {
-				error(404, { message: 'Template not found' });
-			}
-
-			const existingSetGroup = await tx
-				.select({ index: templateSetGroupsTable.index })
-				.from(templateSetGroupsTable)
-				.where(eq(templateSetGroupsTable.template, templateId))
-				.orderBy(desc(templateSetGroupsTable.index))
-				.limit(1);
-
-			const nextIndex =
-				existingSetGroup.at(0)?.index !== undefined ? existingSetGroup[0].index + 1 : 0;
-
-			await tx.insert(templateSetGroupsTable).values({
-				template: templateId,
-				exercise: exerciseId,
-				index: nextIndex,
-				restDuration: 150,
-				isSuperset: false
-			});
+			await insertTemplateSetGroup(tx, templateId, exerciseId);
 		});
 	}
 );

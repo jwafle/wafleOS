@@ -21,6 +21,12 @@ const idField = z
 	});
 
 const metricValueField = z.string().optional();
+const exerciseNameField = z.string().trim().min(1, 'Exercise name is required').max(100);
+const measuredInField = z.enum(['duration', 'reps', 'reps_and_weight']);
+const closeAfterAddField = z
+	.string()
+	.optional()
+	.transform((value) => value === 'true');
 const indexOffset = 1_000_000;
 const epochMsNow = sql`CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`;
 
@@ -104,6 +110,47 @@ const reindexSets = async (
 	}
 };
 
+const insertSetGroup = async (
+	tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+	workoutId: number,
+	exerciseId: number
+) => {
+	const workout = await tx.query.workoutsTable.findFirst({
+		where: eq(workoutsTable.id, workoutId),
+		columns: { id: true }
+	});
+
+	if (!workout) {
+		error(404, { message: 'Workout not found' });
+	}
+
+	const exercise = await tx.query.exercisesTable.findFirst({
+		where: eq(exercisesTable.id, exerciseId),
+		columns: { id: true }
+	});
+
+	if (!exercise) {
+		error(404, { message: 'Exercise not found' });
+	}
+
+	const existingSetGroup = await tx
+		.select({ index: setGroupsTable.index })
+		.from(setGroupsTable)
+		.where(eq(setGroupsTable.workout, workoutId))
+		.orderBy(desc(setGroupsTable.index))
+		.limit(1);
+
+	const nextIndex = existingSetGroup.at(0)?.index !== undefined ? existingSetGroup[0].index + 1 : 0;
+
+	await tx.insert(setGroupsTable).values({
+		workout: workoutId,
+		exercise: exerciseId,
+		index: nextIndex,
+		restDuration: 150,
+		isSuperset: false
+	});
+};
+
 export const startWorkout = form(z.object({ templateId: idField }), async ({ templateId }) => {
 	let workoutId: number | null = null;
 
@@ -176,6 +223,48 @@ export const getExercisesForPicker = query(async () => {
 		.orderBy(asc(exercisesTable.name));
 });
 
+export const createExerciseAndAddSetGroup = form(
+	z.object({
+		workoutId: idField,
+		name: exerciseNameField,
+		measuredIn: measuredInField,
+		closeAfterAdd: closeAfterAddField
+	}),
+	async ({ workoutId, name, measuredIn, closeAfterAdd }, issue) => {
+		const normalizedName = name.trim().toLowerCase();
+		const duplicateExercise = await db.query.exercisesTable.findFirst({
+			where: sql`lower(trim(${exercisesTable.name})) = ${normalizedName}`,
+			columns: { id: true }
+		});
+
+		if (duplicateExercise) {
+			invalid(issue.name('Exercise name already exists'));
+		}
+
+		try {
+			await db.transaction(async (tx) => {
+				const [newExercise] = await tx
+					.insert(exercisesTable)
+					.values({
+						name,
+						measured_in: measuredIn
+					})
+					.returning({ id: exercisesTable.id });
+
+				await insertSetGroup(tx, workoutId, newExercise.id);
+			});
+		} catch (err) {
+			if (err instanceof Error && err.message.includes('exercise_name_ci_unique')) {
+				invalid(issue.name('Exercise name already exists'));
+			}
+
+			throw err;
+		}
+
+		return { closeDialog: closeAfterAdd };
+	}
+);
+
 export const addSetGroup = form(
 	z.object({
 		workoutId: idField,
@@ -183,32 +272,7 @@ export const addSetGroup = form(
 	}),
 	async ({ workoutId, exerciseId }) => {
 		await db.transaction(async (tx) => {
-			const workout = await tx.query.workoutsTable.findFirst({
-				where: eq(workoutsTable.id, workoutId),
-				columns: { id: true }
-			});
-
-			if (!workout) {
-				error(404, { message: 'Workout not found' });
-			}
-
-			const existingSetGroup = await tx
-				.select({ index: setGroupsTable.index })
-				.from(setGroupsTable)
-				.where(eq(setGroupsTable.workout, workoutId))
-				.orderBy(desc(setGroupsTable.index))
-				.limit(1);
-
-			const nextIndex =
-				existingSetGroup.at(0)?.index !== undefined ? existingSetGroup[0].index + 1 : 0;
-
-			await tx.insert(setGroupsTable).values({
-				workout: workoutId,
-				exercise: exerciseId,
-				index: nextIndex,
-				restDuration: 150,
-				isSuperset: false
-			});
+			await insertSetGroup(tx, workoutId, exerciseId);
 		});
 	}
 );

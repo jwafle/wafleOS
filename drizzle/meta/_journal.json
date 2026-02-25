@@ -1,27 +1,34 @@
 {
-  "version": "7",
-  "dialect": "sqlite",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "6",
-      "when": 1770356701716,
-      "tag": "0000_calm_devos",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1770515406298,
-      "tag": "0001_luxuriant_korvac",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1771567000000,
-      "tag": "0002_timestamp_ms_fix",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "sqlite",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "6",
+			"when": 1770356701716,
+			"tag": "0000_calm_devos",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "6",
+			"when": 1770515406298,
+			"tag": "0001_luxuriant_korvac",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "6",
+			"when": 1771567000000,
+			"tag": "0002_timestamp_ms_fix",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "6",
+			"when": 1771995082227,
+			"tag": "0003_high_fantastic_four",
+			"breakpoints": true
+		}
+	]
 }

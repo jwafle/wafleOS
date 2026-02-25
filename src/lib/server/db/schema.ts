@@ -1,5 +1,5 @@
 import { sql, relations } from 'drizzle-orm';
-import { sqliteTable as table, check, unique } from 'drizzle-orm/sqlite-core';
+import { sqliteTable as table, check, unique, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import * as t from 'drizzle-orm/sqlite-core';
 
 export const exercisesTable = table(
@@ -15,7 +15,7 @@ export const exercisesTable = table(
 	},
 	(t) => [
 		check('measured_in_check', sql`${t.measured_in} IN ('duration', 'reps', 'reps_and_weight')`),
-		unique('name_measured_in_unique').on(t.name, t.measured_in)
+		uniqueIndex('exercise_name_ci_unique').on(sql`lower(trim(${t.name}))`)
 	]
 );
 

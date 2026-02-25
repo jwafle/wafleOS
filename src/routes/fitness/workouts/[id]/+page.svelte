@@ -2,6 +2,7 @@
 	import {
 		addSetGroup,
 		addSetToGroup,
+		createExerciseAndAddSetGroup,
 		deleteWorkout,
 		getExercisesForPicker,
 		getWorkoutById,
@@ -41,12 +42,19 @@
 
 	let { data }: PageProps = $props();
 	let addSetGroupDialog: HTMLDialogElement | null = $state(null);
+	let showCreateExerciseForm = $state(false);
 	let nowMs = $state(0);
 	let restTimerEndsAtMs = $state<number | null>(null);
 	let lastAppliedCompletionAtMs = $state<number | null>(null);
 
 	const workoutQuery = $derived(getWorkoutById(data.workoutId));
 	const exercisesQuery = getExercisesForPicker();
+	const createExerciseForm = createExerciseAndAddSetGroup.for('create-workout-exercise');
+
+	const closeAddSetGroupDialog = () => {
+		addSetGroupDialog?.close();
+		showCreateExerciseForm = false;
+	};
 
 	const toEpochMs = (value: unknown): number | null => {
 		if (value === null || value === undefined) {
@@ -273,6 +281,15 @@
 	};
 
 	$effect(() => {
+		const result = createExerciseForm.result;
+		if (!result?.closeDialog) {
+			return;
+		}
+
+		closeAddSetGroupDialog();
+	});
+
+	$effect(() => {
 		if (typeof window === 'undefined') {
 			return;
 		}
@@ -336,6 +353,8 @@
 		{@const restRemainingMs =
 			restTimerEndsAtMs === null ? null : Math.max(0, restTimerEndsAtMs - nowMs)}
 
+		<a href="/fitness">Back to fitness</a>
+
 		<h1>{workout.template?.name || 'unknown template name'}</h1>
 
 		<section class="timer-region">
@@ -364,7 +383,14 @@
 			<button>Delete workout</button>
 		</form>
 
-		<button onclick={() => addSetGroupDialog?.showModal()}>Add set group</button>
+		<button
+			onclick={() => {
+				showCreateExerciseForm = false;
+				addSetGroupDialog?.showModal();
+			}}
+		>
+			Add set group
+		</button>
 
 		<dialog bind:this={addSetGroupDialog}>
 			<h2>Select an exercise</h2>
@@ -374,13 +400,71 @@
 						<form {...addSetGroup.for(`add-set-group-${exercise.id}`)}>
 							<input type="hidden" name="workoutId" value={workout.id} />
 							<input type="hidden" name="exerciseId" value={exercise.id} />
-							<button onclick={() => addSetGroupDialog?.close()}>{exercise.name}</button>
+							<button onclick={() => closeAddSetGroupDialog()}>{exercise.name}</button>
 						</form>
 					</li>
 				{/each}
 			</ul>
+
+			{#if !showCreateExerciseForm}
+				<button type="button" onclick={() => (showCreateExerciseForm = true)}>
+					Add a new exercise
+				</button>
+			{:else}
+				<section>
+					<h3>Create new exercise</h3>
+					<form
+						{...createExerciseForm.enhance(async ({ form, submit }) => {
+							await submit();
+							if (!createExerciseForm.result || createExerciseForm.result.closeDialog) {
+								return;
+							}
+
+							form.reset();
+						})}
+					>
+						<input type="hidden" name="workoutId" value={workout.id} />
+
+						<label>
+							Exercise name
+							<input
+								type="text"
+								name="name"
+								maxlength="100"
+								required
+								placeholder="e.g. Incline Dumbbell Press"
+							/>
+						</label>
+						{#if createExerciseForm.fields.name.issues()?.[0]}
+							<p>{createExerciseForm.fields.name.issues()?.[0]?.message}</p>
+						{/if}
+
+						<label>
+							Measured by
+							<select name="measuredIn" required>
+								<option value="" disabled selected>Select one</option>
+								<option value="duration">Duration</option>
+								<option value="reps">Reps</option>
+								<option value="reps_and_weight">Reps and weight</option>
+							</select>
+						</label>
+						{#if createExerciseForm.fields.measuredIn.issues()?.[0]}
+							<p>{createExerciseForm.fields.measuredIn.issues()?.[0]?.message}</p>
+						{/if}
+
+						<div>
+							<button type="submit" name="closeAfterAdd" value="false">Create & add another</button>
+							<button type="submit" name="closeAfterAdd" value="true">
+								Create, add & close
+							</button>
+							<button type="button" onclick={() => (showCreateExerciseForm = false)}>Cancel</button>
+						</div>
+					</form>
+				</section>
+			{/if}
+
 			<form method="dialog">
-				<button>Cancel</button>
+				<button onclick={() => (showCreateExerciseForm = false)}>Close</button>
 			</form>
 		</dialog>
 
