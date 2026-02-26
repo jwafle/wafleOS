@@ -507,40 +507,47 @@
 					>
 						<div class="group-header">
 							<h2>{setGroupIndex + 1}. {setGroup.exercise.name}</h2>
-						</div>
+							<div class="group-header-actions">
+								<form {...moveSetGroup.for(`move-up-${setGroup.id}`)}>
+									<input type="hidden" name="workoutId" value={workout.id} />
+									<input type="hidden" name="setGroupId" value={setGroup.id} />
+									<input type="hidden" name="direction" value="up" />
+									<button
+										type="submit"
+										class="outline-soft icon-control"
+										disabled={setGroupIndex === 0}
+										aria-label="Move set group up"
+									>
+										↑
+									</button>
+								</form>
 
-						<div class="group-controls">
-							<form {...moveSetGroup.for(`move-up-${setGroup.id}`)}>
-								<input type="hidden" name="workoutId" value={workout.id} />
-								<input type="hidden" name="setGroupId" value={setGroup.id} />
-								<input type="hidden" name="direction" value="up" />
-								<button type="submit" class="outline-soft" disabled={setGroupIndex === 0}>Move up</button>
-							</form>
+								<form {...moveSetGroup.for(`move-down-${setGroup.id}`)}>
+									<input type="hidden" name="workoutId" value={workout.id} />
+									<input type="hidden" name="setGroupId" value={setGroup.id} />
+									<input type="hidden" name="direction" value="down" />
+									<button
+										type="submit"
+										class="outline-soft icon-control"
+										disabled={setGroupIndex === workout.setGroups.length - 1}
+										aria-label="Move set group down"
+									>
+										↓
+									</button>
+								</form>
 
-							<form {...moveSetGroup.for(`move-down-${setGroup.id}`)}>
-								<input type="hidden" name="workoutId" value={workout.id} />
-								<input type="hidden" name="setGroupId" value={setGroup.id} />
-								<input type="hidden" name="direction" value="down" />
-								<button
-									type="submit"
-									class="outline-soft"
-									disabled={setGroupIndex === workout.setGroups.length - 1}
-								>
-									Move down
-								</button>
-							</form>
-
-							<form {...addSetToGroup.for(setGroup.id)}>
-								<input type="hidden" name="workoutId" value={workout.id} />
-								<input type="hidden" name="setGroupId" value={setGroup.id} />
-								<button type="submit">Add set</button>
-							</form>
-
-							<form {...removeSetGroup.for(setGroup.id)}>
-								<input type="hidden" name="workoutId" value={workout.id} />
-								<input type="hidden" name="setGroupId" value={setGroup.id} />
-								<button type="submit" class="outline-soft" data-variant="danger">Remove set group</button>
-							</form>
+								<form {...removeSetGroup.for(setGroup.id)}>
+									<input type="hidden" name="workoutId" value={workout.id} />
+									<input type="hidden" name="setGroupId" value={setGroup.id} />
+									<button
+										type="submit"
+										class="outline-soft icon-control icon-control-danger"
+										aria-label="Remove set group"
+									>
+										X
+									</button>
+								</form>
+							</div>
 						</div>
 
 						<div class="set-list">
@@ -548,10 +555,24 @@
 								{@const metricPrefillValues = getSetMetricPrefillValues(workout, setGroup, set)}
 								{@const toggleSetCompleteForm = toggleSetComplete.for(set.id)}
 								<div class="set-row">
-									<div class="set-meta">
-										<span>Set {setIndex + 1}</span>
-										<span>{set.type}</span>
-										<span>{set.finishedAt ? 'complete' : 'incomplete'}</span>
+									<div class="set-row-header">
+										<p class="set-row-title">
+											Set {setIndex + 1}
+											<span class="set-row-type">{set.type}</span>
+										</p>
+
+										<form {...removeSetFromGroup.for(set.id)}>
+											<input type="hidden" name="workoutId" value={workout.id} />
+											<input type="hidden" name="setGroupId" value={setGroup.id} />
+											<input type="hidden" name="setId" value={set.id} />
+											<button
+												type="submit"
+												class="outline-soft icon-control"
+												aria-label="Remove set"
+											>
+												C
+											</button>
+										</form>
 									</div>
 
 									<div class="metric-inputs">
@@ -652,18 +673,81 @@
 										{/if}
 									</form>
 
-									<form {...removeSetFromGroup.for(set.id)}>
-										<input type="hidden" name="workoutId" value={workout.id} />
-										<input type="hidden" name="setGroupId" value={setGroup.id} />
-										<input type="hidden" name="setId" value={set.id} />
-										<button type="submit" class="outline-soft">Remove set</button>
-									</form>
 								</div>
 							{/each}
 						</div>
+
+						<form {...addSetToGroup.for(setGroup.id)} class="set-group-add-form">
+							<input type="hidden" name="workoutId" value={workout.id} />
+							<input type="hidden" name="setGroupId" value={setGroup.id} />
+							<button type="submit" class="outline-soft">Add set</button>
+						</form>
 					</article>
 				{/each}
 			</div>
 		</section>
 	{/if}
 {/if}
+
+<style>
+	.group-header {
+		align-items: flex-start;
+	}
+
+	.group-header-actions {
+		display: flex;
+		gap: var(--space-2);
+	}
+
+	.group-header-actions form,
+	.set-row-header form,
+	.set-group-add-form {
+		margin: 0;
+	}
+
+	.icon-control {
+		min-width: 2.25rem;
+		padding: var(--space-2);
+		font-family: var(--font-mono);
+		line-height: 1;
+	}
+
+	.icon-control-danger {
+		border-color: rgb(from var(--danger) r g b / 0.5);
+		color: var(--danger-foreground);
+	}
+
+	.icon-control-danger:hover {
+		background: rgb(from var(--danger) r g b / 0.16);
+	}
+
+	.set-row-header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--space-3);
+	}
+
+	.set-row-title {
+		margin: 0;
+		font-family: var(--font-mono);
+		font-size: 13px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+
+	.set-row-type {
+		margin-inline-start: var(--space-2);
+		text-transform: capitalize;
+	}
+
+	.set-complete-form,
+	.set-group-add-form {
+		width: 100%;
+	}
+
+	.set-complete-form button,
+	.set-group-add-form button {
+		width: 100%;
+	}
+</style>
