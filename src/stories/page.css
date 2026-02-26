@@ -1,68 +1,72 @@
 .storybook-page {
-  margin: 0 auto;
-  padding: 48px 20px;
-  max-width: 600px;
-  color: #333;
-  font-size: 14px;
-  line-height: 24px;
-  font-family: 'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+	margin: 0 auto;
+	padding: 20px 14px;
+	max-width: 720px;
+	color: var(--foreground);
+	font-size: 13px;
+	line-height: 1.45;
+	font-family: var(--font-sans);
 }
 
 .storybook-page h2 {
-  display: inline-block;
-  vertical-align: top;
-  margin: 0 0 4px;
-  font-weight: 700;
-  font-size: 32px;
-  line-height: 1;
+	display: inline-block;
+	vertical-align: top;
+	margin: 0 0 8px;
+	font-family: var(--font-mono);
+	font-size: 22px;
+	line-height: 1;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
 }
 
 .storybook-page p {
-  margin: 1em 0;
+	margin: 8px 0;
 }
 
 .storybook-page a {
-  color: inherit;
+	color: inherit;
 }
 
 .storybook-page ul {
-  margin: 1em 0;
-  padding-left: 30px;
+	margin: 8px 0;
+	padding-left: 18px;
 }
 
 .storybook-page li {
-  margin-bottom: 8px;
+	margin-bottom: 6px;
 }
 
 .storybook-page .tip {
-  display: inline-block;
-  vertical-align: top;
-  margin-right: 10px;
-  border-radius: 1em;
-  background: #e7fdd8;
-  padding: 4px 12px;
-  color: #357a14;
-  font-weight: 700;
-  font-size: 11px;
-  line-height: 12px;
+	display: inline-block;
+	vertical-align: top;
+	margin-right: 8px;
+	border: 1px solid rgb(from var(--success) r g b / 0.45);
+	background: rgb(from var(--success) r g b / 0.18);
+	padding: 3px 7px;
+	color: var(--success-foreground);
+	font-family: var(--font-mono);
+	font-size: 11px;
+	line-height: 1;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
 }
 
 .storybook-page .tip-wrapper {
-  margin-top: 40px;
-  margin-bottom: 40px;
-  font-size: 13px;
-  line-height: 20px;
+	margin-top: 24px;
+	margin-bottom: 16px;
+	font-size: 12px;
+	line-height: 1.45;
 }
 
 .storybook-page .tip-wrapper svg {
-  display: inline-block;
-  vertical-align: top;
-  margin-top: 3px;
-  margin-right: 4px;
-  width: 12px;
-  height: 12px;
+	display: inline-block;
+	vertical-align: top;
+	margin-top: 3px;
+	margin-right: 4px;
+	width: 11px;
+	height: 11px;
 }
 
 .storybook-page .tip-wrapper svg path {
-  fill: #1ea7fd;
+	fill: #8a8a8a;
 }

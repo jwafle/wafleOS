@@ -328,16 +328,24 @@
 </script>
 
 {#if workoutQuery.error}
-	<p>error</p>
+	<article class="section-card" role="alert" data-variant="danger">
+		<p>Unable to load workout.</p>
+	</article>
 {:else if !workoutQuery.current && workoutQuery.loading}
-	<p>loading</p>
+	<article class="section-card" role="status">
+		<p class="spinner" aria-label="Loading workout"></p>
+	</article>
 {:else if !workoutQuery.current}
-	<p>workout not found</p>
+	<article class="section-card" role="alert" data-variant="warning">
+		<p>Workout not found.</p>
+	</article>
 {:else}
 	{@const workout = workoutQuery.current}
 	{@const exercises = exercisesQuery.current || []}
 	{#if !workout}
-		<p>Workout not found.</p>
+		<article class="section-card" role="alert" data-variant="warning">
+			<p>Workout not found.</p>
+		</article>
 	{:else}
 		{@const workoutStartedAtMs = toEpochMs(workout.startedAt) ?? 0}
 		{@const workoutFinishedAtMs = toEpochMs(workout.finishedAt)}
@@ -353,264 +361,309 @@
 		{@const restRemainingMs =
 			restTimerEndsAtMs === null ? null : Math.max(0, restTimerEndsAtMs - nowMs)}
 
-		<a href="/fitness">Back to fitness</a>
+		<section class="page-shell">
+			<header class="page-head active-border">
+				<div class="stack-dense">
+					<a href="/fitness">Back to fitness</a>
+					<h1>{workout.template?.name || 'unknown template name'}</h1>
+					<p>Track each set with dense controls and keep rest pacing visible at all times.</p>
+				</div>
+			</header>
 
-		<h1>{workout.template?.name || 'unknown template name'}</h1>
+			<section class="timer-region">
+				<div class="timer-card active-border">
+					<p>Workout time</p>
+					<p>{formatMsAsClock(wallClockElapsedMs)}</p>
+				</div>
+				<div class="timer-card {restRemainingMs !== null && restRemainingMs > 0 ? 'active-border' : ''}">
+					<p>Rest timer</p>
+					<p>{restRemainingMs === null ? '--:--:--' : formatMsAsClock(restRemainingMs)}</p>
+					{#if practicalNextSetGroup && practicalNextSetGroupIndex !== null}
+						<p class="timer-subtext">
+							Up next: {practicalNextSetGroupIndex + 1}. {practicalNextSetGroup.exercise.name}
+						</p>
+					{/if}
+				</div>
+			</section>
 
-		<section class="timer-region">
-			<div class="timer-card">
-				<p>Workout time</p>
-				<p>{formatMsAsClock(wallClockElapsedMs)}</p>
-			</div>
-			<div class="timer-card">
-				<p>Rest timer</p>
-				<p>{restRemainingMs === null ? '--:--:--' : formatMsAsClock(restRemainingMs)}</p>
-				{#if practicalNextSetGroup && practicalNextSetGroupIndex !== null}
-					<p class="timer-subtext">
-						Up next: {practicalNextSetGroupIndex + 1}. {practicalNextSetGroup.exercise.name}
-					</p>
-				{/if}
-			</div>
-		</section>
-
-		<form {...toggleWorkoutComplete}>
-			<input type="hidden" name="workoutId" value={workout.id} />
-			<button>{workout.finishedAt ? 'Mark workout incomplete' : 'Mark workout complete'}</button>
-		</form>
-
-		<form {...deleteWorkout}>
-			<input type="hidden" name="workoutId" value={workout.id} />
-			<button>Delete workout</button>
-		</form>
-
-		<button
-			onclick={() => {
-				showCreateExerciseForm = false;
-				addSetGroupDialog?.showModal();
-			}}
-		>
-			Add set group
-		</button>
-
-		<dialog bind:this={addSetGroupDialog}>
-			<h2>Select an exercise</h2>
-			<ul>
-				{#each exercises as exercise (exercise.id)}
-					<li>
-						<form {...addSetGroup.for(`add-set-group-${exercise.id}`)}>
-							<input type="hidden" name="workoutId" value={workout.id} />
-							<input type="hidden" name="exerciseId" value={exercise.id} />
-							<button onclick={() => closeAddSetGroupDialog()}>{exercise.name}</button>
-						</form>
-					</li>
-				{/each}
-			</ul>
-
-			{#if !showCreateExerciseForm}
-				<button type="button" onclick={() => (showCreateExerciseForm = true)}>
-					Add a new exercise
-				</button>
-			{:else}
-				<section>
-					<h3>Create new exercise</h3>
-					<form
-						{...createExerciseForm.enhance(async ({ form, submit }) => {
-							await submit();
-							if (!createExerciseForm.result || createExerciseForm.result.closeDialog) {
-								return;
-							}
-
-							form.reset();
-						})}
-					>
+			<article class="section-card stack-dense">
+				<div class="actions-row">
+					<form {...toggleWorkoutComplete}>
 						<input type="hidden" name="workoutId" value={workout.id} />
-
-						<label>
-							Exercise name
-							<input
-								type="text"
-								name="name"
-								maxlength="100"
-								required
-								placeholder="e.g. Incline Dumbbell Press"
-							/>
-						</label>
-						{#if createExerciseForm.fields.name.issues()?.[0]}
-							<p>{createExerciseForm.fields.name.issues()?.[0]?.message}</p>
-						{/if}
-
-						<label>
-							Measured by
-							<select name="measuredIn" required>
-								<option value="" disabled selected>Select one</option>
-								<option value="duration">Duration</option>
-								<option value="reps">Reps</option>
-								<option value="reps_and_weight">Reps and weight</option>
-							</select>
-						</label>
-						{#if createExerciseForm.fields.measuredIn.issues()?.[0]}
-							<p>{createExerciseForm.fields.measuredIn.issues()?.[0]?.message}</p>
-						{/if}
-
-						<div>
-							<button type="submit" name="closeAfterAdd" value="false">Create & add another</button>
-							<button type="submit" name="closeAfterAdd" value="true">
-								Create, add & close
-							</button>
-							<button type="button" onclick={() => (showCreateExerciseForm = false)}>Cancel</button>
-						</div>
+						<button type="submit" data-variant="primary">
+							{workout.finishedAt ? 'Mark workout incomplete' : 'Mark workout complete'}
+						</button>
 					</form>
-				</section>
-			{/if}
 
-			<form method="dialog">
-				<button onclick={() => (showCreateExerciseForm = false)}>Close</button>
-			</form>
-		</dialog>
+					<form {...deleteWorkout}>
+						<input type="hidden" name="workoutId" value={workout.id} />
+						<button type="submit" class="outline-soft" data-variant="danger">Delete workout</button>
+					</form>
 
-		{#each workout.setGroups as setGroup, setGroupIndex (setGroup.id)}
-			<section>
-				<h2>
-					{setGroupIndex + 1}. {setGroup.exercise.name}
-				</h2>
+					<button
+						type="button"
+						data-variant="secondary"
+						onclick={() => {
+							showCreateExerciseForm = false;
+							addSetGroupDialog?.showModal();
+						}}
+					>
+						Add set group
+					</button>
+				</div>
+			</article>
 
-				<form {...moveSetGroup.for(`move-up-${setGroup.id}`)}>
-					<input type="hidden" name="workoutId" value={workout.id} />
-					<input type="hidden" name="setGroupId" value={setGroup.id} />
-					<input type="hidden" name="direction" value="up" />
-					<button disabled={setGroupIndex === 0}>Move up</button>
-				</form>
+			<dialog bind:this={addSetGroupDialog} class="section-card">
+				<h2>Select exercise</h2>
+				<ul class="dialog-list">
+					{#each exercises as exercise (exercise.id)}
+						<li>
+							<form {...addSetGroup.for(`add-set-group-${exercise.id}`)}>
+								<input type="hidden" name="workoutId" value={workout.id} />
+								<input type="hidden" name="exerciseId" value={exercise.id} />
+								<button type="submit" class="outline-soft" onclick={() => closeAddSetGroupDialog()}>
+									{exercise.name}
+								</button>
+							</form>
+						</li>
+					{/each}
+				</ul>
 
-				<form {...moveSetGroup.for(`move-down-${setGroup.id}`)}>
-					<input type="hidden" name="workoutId" value={workout.id} />
-					<input type="hidden" name="setGroupId" value={setGroup.id} />
-					<input type="hidden" name="direction" value="down" />
-					<button disabled={setGroupIndex === workout.setGroups.length - 1}>Move down</button>
-				</form>
+				{#if !showCreateExerciseForm}
+					<div class="actions-row mt-4">
+						<button type="button" onclick={() => (showCreateExerciseForm = true)}>
+							Add a new exercise
+						</button>
+					</div>
+				{:else}
+					<section class="stack-tight mt-4">
+						<h3>Create new exercise</h3>
+						<form
+							class="form-grid"
+							{...createExerciseForm.enhance(async ({ form, submit }) => {
+								await submit();
+								if (!createExerciseForm.result || createExerciseForm.result.closeDialog) {
+									return;
+								}
 
-				<form {...removeSetGroup.for(setGroup.id)}>
-					<input type="hidden" name="workoutId" value={workout.id} />
-					<input type="hidden" name="setGroupId" value={setGroup.id} />
-					<button>Remove set group</button>
-				</form>
-
-				<form {...addSetToGroup.for(setGroup.id)}>
-					<input type="hidden" name="workoutId" value={workout.id} />
-					<input type="hidden" name="setGroupId" value={setGroup.id} />
-					<button>Add set</button>
-				</form>
-
-				{#each setGroup.sets as set, setIndex (set.id)}
-					{@const metricPrefillValues = getSetMetricPrefillValues(workout, setGroup, set)}
-					{@const toggleSetCompleteForm = toggleSetComplete.for(set.id)}
-					<div class="set-row">
-						<p>Set {setIndex + 1}</p>
-						<p>{set.type}</p>
-						<p>{set.finishedAt ? 'complete' : 'incomplete'}</p>
-
-						<div class="metric-inputs">
-							{#if setGroup.exercise.measured_in === 'duration'}
-								<form
-									{...updateSetMetrics
-										.for(`set-${set.id}-duration`)
-										.enhance(({ submit }) => submit())}
-									class="metric-field"
-								>
-									<input type="hidden" name="workoutId" value={workout.id} />
-									<input type="hidden" name="setId" value={set.id} />
-									<label>
-										Duration (sec)
-										<input
-											type="number"
-											name="duration"
-											min="1"
-											step="1"
-											value={metricPrefillValues.duration}
-											onblur={autosaveMetricOnBlur}
-										/>
-									</label>
-								</form>
-							{:else if setGroup.exercise.measured_in === 'reps'}
-								<form
-									{...updateSetMetrics.for(`set-${set.id}-reps`).enhance(({ submit }) => submit())}
-									class="metric-field"
-								>
-									<input type="hidden" name="workoutId" value={workout.id} />
-									<input type="hidden" name="setId" value={set.id} />
-									<label>
-										Reps
-										<input
-											type="number"
-											name="reps"
-											min="1"
-											step="1"
-											value={metricPrefillValues.reps}
-											onblur={autosaveMetricOnBlur}
-										/>
-									</label>
-								</form>
-							{:else}
-								<form
-									{...updateSetMetrics.for(`set-${set.id}-reps`).enhance(({ submit }) => submit())}
-									class="metric-field"
-								>
-									<input type="hidden" name="workoutId" value={workout.id} />
-									<input type="hidden" name="setId" value={set.id} />
-									<label>
-										Reps
-										<input
-											type="number"
-											name="reps"
-											min="1"
-											step="1"
-											value={metricPrefillValues.reps}
-											onblur={autosaveMetricOnBlur}
-										/>
-									</label>
-								</form>
-								<form
-									{...updateSetMetrics
-										.for(`set-${set.id}-weight`)
-										.enhance(({ submit }) => submit())}
-									class="metric-field"
-								>
-									<input type="hidden" name="workoutId" value={workout.id} />
-									<input type="hidden" name="setId" value={set.id} />
-									<label>
-										Weight (lbs)
-										<input
-											type="number"
-											name="weight"
-											min="0.1"
-											step="0.1"
-											value={metricPrefillValues.weight}
-											onblur={autosaveMetricOnBlur}
-										/>
-									</label>
-								</form>
-							{/if}
-						</div>
-
-						<form {...toggleSetCompleteForm} class="set-complete-form">
+								form.reset();
+							})}
+						>
 							<input type="hidden" name="workoutId" value={workout.id} />
-							<input type="hidden" name="setId" value={set.id} />
-							<button>{set.finishedAt ? 'Mark incomplete' : 'Mark complete'}</button>
-							{#if toggleSetCompleteForm.fields.setId.issues()?.[0]}
-								<p class="set-error" role="alert">
-									{toggleSetCompleteForm.fields.setId.issues()?.[0]?.message}
+
+							<label>
+								Exercise name
+								<input
+									type="text"
+									name="name"
+									maxlength="100"
+									required
+									placeholder="e.g. Incline Dumbbell Press"
+								/>
+							</label>
+							{#if createExerciseForm.fields.name.issues()?.[0]}
+								<p class="error-text" role="alert">{createExerciseForm.fields.name.issues()?.[0]?.message}</p>
+							{/if}
+
+							<label>
+								Measured by
+								<select name="measuredIn" required>
+									<option value="" disabled selected>Select one</option>
+									<option value="duration">Duration</option>
+									<option value="reps">Reps</option>
+									<option value="reps_and_weight">Reps and weight</option>
+								</select>
+							</label>
+							{#if createExerciseForm.fields.measuredIn.issues()?.[0]}
+								<p class="error-text" role="alert">
+									{createExerciseForm.fields.measuredIn.issues()?.[0]?.message}
 								</p>
 							{/if}
-						</form>
 
-						<form {...removeSetFromGroup.for(set.id)}>
-							<input type="hidden" name="workoutId" value={workout.id} />
-							<input type="hidden" name="setGroupId" value={setGroup.id} />
-							<input type="hidden" name="setId" value={set.id} />
-							<button>Remove set</button>
+							<div class="actions-row">
+								<button type="submit" name="closeAfterAdd" value="false">Create & add another</button>
+								<button type="submit" name="closeAfterAdd" value="true" data-variant="primary">
+									Create, add & close
+								</button>
+								<button type="button" class="outline-soft" onclick={() => (showCreateExerciseForm = false)}>
+									Cancel
+								</button>
+							</div>
 						</form>
-					</div>
+					</section>
+				{/if}
+
+				<form method="dialog" class="actions-row mt-4">
+					<button type="submit" class="outline-soft" onclick={() => (showCreateExerciseForm = false)}>
+						Close
+					</button>
+				</form>
+			</dialog>
+
+			<div class="stack-tight">
+				{#each workout.setGroups as setGroup, setGroupIndex (setGroup.id)}
+					<article
+						class={`set-group ${practicalNextSetGroupIndex === setGroupIndex ? 'active-border' : ''}`}
+					>
+						<div class="group-header">
+							<h2>{setGroupIndex + 1}. {setGroup.exercise.name}</h2>
+						</div>
+
+						<div class="group-controls">
+							<form {...moveSetGroup.for(`move-up-${setGroup.id}`)}>
+								<input type="hidden" name="workoutId" value={workout.id} />
+								<input type="hidden" name="setGroupId" value={setGroup.id} />
+								<input type="hidden" name="direction" value="up" />
+								<button type="submit" class="outline-soft" disabled={setGroupIndex === 0}>Move up</button>
+							</form>
+
+							<form {...moveSetGroup.for(`move-down-${setGroup.id}`)}>
+								<input type="hidden" name="workoutId" value={workout.id} />
+								<input type="hidden" name="setGroupId" value={setGroup.id} />
+								<input type="hidden" name="direction" value="down" />
+								<button
+									type="submit"
+									class="outline-soft"
+									disabled={setGroupIndex === workout.setGroups.length - 1}
+								>
+									Move down
+								</button>
+							</form>
+
+							<form {...addSetToGroup.for(setGroup.id)}>
+								<input type="hidden" name="workoutId" value={workout.id} />
+								<input type="hidden" name="setGroupId" value={setGroup.id} />
+								<button type="submit">Add set</button>
+							</form>
+
+							<form {...removeSetGroup.for(setGroup.id)}>
+								<input type="hidden" name="workoutId" value={workout.id} />
+								<input type="hidden" name="setGroupId" value={setGroup.id} />
+								<button type="submit" class="outline-soft" data-variant="danger">Remove set group</button>
+							</form>
+						</div>
+
+						<div class="set-list">
+							{#each setGroup.sets as set, setIndex (set.id)}
+								{@const metricPrefillValues = getSetMetricPrefillValues(workout, setGroup, set)}
+								{@const toggleSetCompleteForm = toggleSetComplete.for(set.id)}
+								<div class="set-row">
+									<div class="set-meta">
+										<span>Set {setIndex + 1}</span>
+										<span>{set.type}</span>
+										<span>{set.finishedAt ? 'complete' : 'incomplete'}</span>
+									</div>
+
+									<div class="metric-inputs">
+										{#if setGroup.exercise.measured_in === 'duration'}
+											<form
+												{...updateSetMetrics
+													.for(`set-${set.id}-duration`)
+													.enhance(({ submit }) => submit())}
+												class="metric-field"
+											>
+												<input type="hidden" name="workoutId" value={workout.id} />
+												<input type="hidden" name="setId" value={set.id} />
+												<label>
+													Duration (sec)
+													<input
+														type="number"
+														name="duration"
+														min="1"
+														step="1"
+														value={metricPrefillValues.duration}
+														onblur={autosaveMetricOnBlur}
+													/>
+												</label>
+											</form>
+										{:else if setGroup.exercise.measured_in === 'reps'}
+											<form
+												{...updateSetMetrics
+													.for(`set-${set.id}-reps`)
+													.enhance(({ submit }) => submit())}
+												class="metric-field"
+											>
+												<input type="hidden" name="workoutId" value={workout.id} />
+												<input type="hidden" name="setId" value={set.id} />
+												<label>
+													Reps
+													<input
+														type="number"
+														name="reps"
+														min="1"
+														step="1"
+														value={metricPrefillValues.reps}
+														onblur={autosaveMetricOnBlur}
+													/>
+												</label>
+											</form>
+										{:else}
+											<form
+												{...updateSetMetrics
+													.for(`set-${set.id}-reps`)
+													.enhance(({ submit }) => submit())}
+												class="metric-field"
+											>
+												<input type="hidden" name="workoutId" value={workout.id} />
+												<input type="hidden" name="setId" value={set.id} />
+												<label>
+													Reps
+													<input
+														type="number"
+														name="reps"
+														min="1"
+														step="1"
+														value={metricPrefillValues.reps}
+														onblur={autosaveMetricOnBlur}
+													/>
+												</label>
+											</form>
+											<form
+												{...updateSetMetrics
+													.for(`set-${set.id}-weight`)
+													.enhance(({ submit }) => submit())}
+												class="metric-field"
+											>
+												<input type="hidden" name="workoutId" value={workout.id} />
+												<input type="hidden" name="setId" value={set.id} />
+												<label>
+													Weight (lbs)
+													<input
+														type="number"
+														name="weight"
+														min="0.1"
+														step="0.1"
+														value={metricPrefillValues.weight}
+														onblur={autosaveMetricOnBlur}
+													/>
+												</label>
+											</form>
+										{/if}
+									</div>
+
+									<form {...toggleSetCompleteForm} class="set-complete-form">
+										<input type="hidden" name="workoutId" value={workout.id} />
+										<input type="hidden" name="setId" value={set.id} />
+										<button type="submit">{set.finishedAt ? 'Mark incomplete' : 'Mark complete'}</button>
+										{#if toggleSetCompleteForm.fields.setId.issues()?.[0]}
+											<p class="set-error error-text" role="alert">
+												{toggleSetCompleteForm.fields.setId.issues()?.[0]?.message}
+											</p>
+										{/if}
+									</form>
+
+									<form {...removeSetFromGroup.for(set.id)}>
+										<input type="hidden" name="workoutId" value={workout.id} />
+										<input type="hidden" name="setGroupId" value={setGroup.id} />
+										<input type="hidden" name="setId" value={set.id} />
+										<button type="submit" class="outline-soft">Remove set</button>
+									</form>
+								</div>
+							{/each}
+						</div>
+					</article>
 				{/each}
-			</section>
-		{/each}
+			</div>
+		</section>
 	{/if}
 {/if}

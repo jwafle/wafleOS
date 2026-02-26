@@ -44,6 +44,7 @@
 		"vitest": "^4.0.18"
 	},
 	"dependencies": {
+		"@knadh/oat": "^0.4.1",
 		"better-auth": "^1.4.18",
 		"drizzle-orm": "^0.45.1",
 		"drizzle-zod": "^0.8.3",

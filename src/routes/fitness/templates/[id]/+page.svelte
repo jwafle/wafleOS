@@ -37,168 +37,220 @@
 </script>
 
 {#if templateQuery.error}
-	<p>error</p>
+	<article class="section-card" role="alert" data-variant="danger">
+		<p>Unable to load template.</p>
+	</article>
 {:else if !templateQuery.current && templateQuery.loading}
-	<p>loading</p>
+	<article class="section-card" role="status">
+		<p class="spinner" aria-label="Loading template"></p>
+	</article>
 {:else if !templateQuery.current}
-	<p>template not found</p>
+	<article class="section-card" role="alert" data-variant="warning">
+		<p>Template not found.</p>
+	</article>
 {:else}
 	{@const template = templateQuery.current}
 	{@const exercises = exercisesQuery.current || []}
 	{#if !template}
-		<p>Template not found.</p>
+		<article class="section-card" role="alert" data-variant="warning">
+			<p>Template not found.</p>
+		</article>
 	{:else}
-		<a href="/fitness">Back to fitness</a>
+		<section class="page-shell">
+			<header class="page-head active-border">
+				<div class="stack-dense">
+					<a href="/fitness">Back to fitness</a>
+					<h1>{template.name}</h1>
+					<p>Manage exercise groups and default sets for future workouts.</p>
+				</div>
+			</header>
 
-		<h1>{template.name}</h1>
-
-		<form {...renameTemplate}>
-			<input type="hidden" name="templateId" value={template.id} />
-			<input {...renameTemplate.fields.name.as('text')} />
-			{#if renameTemplate.fields.name.issues()?.[0]}
-				<p>{renameTemplate.fields.name.issues()?.[0]?.message}</p>
-			{/if}
-			<button>Rename template</button>
-		</form>
-
-		<form {...deleteTemplate}>
-			<input type="hidden" name="templateId" value={template.id} />
-			<button>Delete template</button>
-		</form>
-
-		<button
-			onclick={() => {
-				showCreateExerciseForm = false;
-				addSetGroupDialog?.showModal();
-			}}
-		>
-			Add set group
-		</button>
-
-		<dialog bind:this={addSetGroupDialog}>
-			<h2>Select an exercise</h2>
-			<ul>
-				{#each exercises as exercise (exercise.id)}
-					<li>
-						<form {...addTemplateSetGroup.for(`add-set-group-${exercise.id}`)}>
-							<input type="hidden" name="templateId" value={template.id} />
-							<input type="hidden" name="exerciseId" value={exercise.id} />
-							<button onclick={() => closeAddSetGroupDialog()}>{exercise.name}</button>
-						</form>
-					</li>
-				{/each}
-			</ul>
-
-			{#if !showCreateExerciseForm}
-				<button type="button" onclick={() => (showCreateExerciseForm = true)}>
-					Add a new exercise
-				</button>
-			{:else}
-				<section>
-					<h3>Create new exercise</h3>
-					<form
-						{...createExerciseForm.enhance(async ({ form, submit }) => {
-							await submit();
-							if (!createExerciseForm.result || createExerciseForm.result.closeDialog) {
-								return;
-							}
-
-							form.reset();
-						})}
-					>
-						<input type="hidden" name="templateId" value={template.id} />
-
-						<label>
-							Exercise name
-							<input
-								type="text"
-								name="name"
-								maxlength="100"
-								required
-								placeholder="e.g. Incline Dumbbell Press"
-							/>
-						</label>
-						{#if createExerciseForm.fields.name.issues()?.[0]}
-							<p>{createExerciseForm.fields.name.issues()?.[0]?.message}</p>
-						{/if}
-
-						<label>
-							Measured by
-							<select name="measuredIn" required>
-								<option value="" disabled selected>Select one</option>
-								<option value="duration">Duration</option>
-								<option value="reps">Reps</option>
-								<option value="reps_and_weight">Reps and weight</option>
-							</select>
-						</label>
-						{#if createExerciseForm.fields.measuredIn.issues()?.[0]}
-							<p>{createExerciseForm.fields.measuredIn.issues()?.[0]?.message}</p>
-						{/if}
-
-						<div>
-							<button type="submit" name="closeAfterAdd" value="false">Create & add another</button>
-							<button type="submit" name="closeAfterAdd" value="true">
-								Create, add & close
-							</button>
-							<button type="button" onclick={() => (showCreateExerciseForm = false)}>Cancel</button>
-						</div>
-					</form>
-				</section>
-			{/if}
-
-			<form method="dialog">
-				<button onclick={() => (showCreateExerciseForm = false)}>Close</button>
-			</form>
-		</dialog>
-
-		{#each template.templateSetGroups as setGroup, setGroupIndex (setGroup.id)}
-			<section>
-				<h2>
-					{setGroupIndex + 1}. {setGroup.exercise.name}
-				</h2>
-
-				<form {...moveTemplateSetGroup.for(`move-up-${setGroup.id}`)}>
+			<article class="section-card stack-tight">
+				<h2>Template settings</h2>
+				<form {...renameTemplate} class="form-grid">
 					<input type="hidden" name="templateId" value={template.id} />
-					<input type="hidden" name="setGroupId" value={setGroup.id} />
-					<input type="hidden" name="direction" value="up" />
-					<button disabled={setGroupIndex === 0}>Move up</button>
-				</form>
-
-				<form {...moveTemplateSetGroup.for(`move-down-${setGroup.id}`)}>
-					<input type="hidden" name="templateId" value={template.id} />
-					<input type="hidden" name="setGroupId" value={setGroup.id} />
-					<input type="hidden" name="direction" value="down" />
-					<button disabled={setGroupIndex === template.templateSetGroups.length - 1}>
-						Move down
-					</button>
-				</form>
-
-				<form {...removeTemplateSetGroup.for(setGroup.id)}>
-					<input type="hidden" name="templateId" value={template.id} />
-					<input type="hidden" name="setGroupId" value={setGroup.id} />
-					<button>Remove set group</button>
-				</form>
-
-				<form {...addSetToTemplateGroup.for(setGroup.id)}>
-					<input type="hidden" name="templateId" value={template.id} />
-					<input type="hidden" name="setGroupId" value={setGroup.id} />
-					<button>Add set</button>
-				</form>
-
-				{#each setGroup.templateSets as set, setIndex (set.id)}
-					<div>
-						<p>Set {setIndex + 1}</p>
-						<p>{set.type}</p>
-
-						<form {...removeSetFromTemplateGroup.for(set.id)}>
-							<input type="hidden" name="templateId" value={template.id} />
-							<input type="hidden" name="setGroupId" value={setGroup.id} />
-							<input type="hidden" name="setId" value={set.id} />
-							<button>Remove set</button>
-						</form>
+					<label>
+						Template name
+						<input {...renameTemplate.fields.name.as('text')} maxlength="100" />
+					</label>
+					{#if renameTemplate.fields.name.issues()?.[0]}
+						<p class="error-text" role="alert">{renameTemplate.fields.name.issues()?.[0]?.message}</p>
+					{/if}
+					<div class="actions-row">
+						<button type="submit" data-variant="primary">Rename template</button>
 					</div>
-				{/each}
-			</section>
-		{/each}
+				</form>
+				<form {...deleteTemplate}>
+					<input type="hidden" name="templateId" value={template.id} />
+					<button type="submit" data-variant="danger" class="outline-soft">Delete template</button>
+				</form>
+			</article>
+
+			<article class="section-card stack-tight">
+				<div class="group-header">
+					<h2>Set groups</h2>
+					<button
+						type="button"
+						data-variant="secondary"
+						onclick={() => {
+							showCreateExerciseForm = false;
+							addSetGroupDialog?.showModal();
+						}}
+					>
+						Add set group
+					</button>
+				</div>
+
+				<dialog bind:this={addSetGroupDialog} class="section-card">
+					<h2>Select exercise</h2>
+					<ul class="dialog-list">
+						{#each exercises as exercise (exercise.id)}
+							<li>
+								<form {...addTemplateSetGroup.for(`add-set-group-${exercise.id}`)}>
+									<input type="hidden" name="templateId" value={template.id} />
+									<input type="hidden" name="exerciseId" value={exercise.id} />
+									<button type="submit" class="outline-soft" onclick={() => closeAddSetGroupDialog()}>
+										{exercise.name}
+									</button>
+								</form>
+							</li>
+						{/each}
+					</ul>
+
+					{#if !showCreateExerciseForm}
+						<div class="actions-row mt-4">
+							<button type="button" onclick={() => (showCreateExerciseForm = true)}>
+								Add a new exercise
+							</button>
+						</div>
+					{:else}
+						<section class="stack-tight mt-4">
+							<h3>Create new exercise</h3>
+							<form
+								class="form-grid"
+								{...createExerciseForm.enhance(async ({ form, submit }) => {
+									await submit();
+									if (!createExerciseForm.result || createExerciseForm.result.closeDialog) {
+										return;
+									}
+
+									form.reset();
+								})}
+							>
+								<input type="hidden" name="templateId" value={template.id} />
+
+								<label>
+									Exercise name
+									<input
+										type="text"
+										name="name"
+										maxlength="100"
+										required
+										placeholder="e.g. Incline Dumbbell Press"
+									/>
+								</label>
+								{#if createExerciseForm.fields.name.issues()?.[0]}
+									<p class="error-text" role="alert">
+										{createExerciseForm.fields.name.issues()?.[0]?.message}
+									</p>
+								{/if}
+
+								<label>
+									Measured by
+									<select name="measuredIn" required>
+										<option value="" disabled selected>Select one</option>
+										<option value="duration">Duration</option>
+										<option value="reps">Reps</option>
+										<option value="reps_and_weight">Reps and weight</option>
+									</select>
+								</label>
+								{#if createExerciseForm.fields.measuredIn.issues()?.[0]}
+									<p class="error-text" role="alert">
+										{createExerciseForm.fields.measuredIn.issues()?.[0]?.message}
+									</p>
+								{/if}
+
+								<div class="actions-row">
+									<button type="submit" name="closeAfterAdd" value="false">Create & add another</button>
+									<button type="submit" name="closeAfterAdd" value="true" data-variant="primary">
+										Create, add & close
+									</button>
+									<button type="button" class="outline-soft" onclick={() => (showCreateExerciseForm = false)}>
+										Cancel
+									</button>
+								</div>
+							</form>
+						</section>
+					{/if}
+
+					<form method="dialog" class="actions-row mt-4">
+						<button type="submit" class="outline-soft" onclick={() => (showCreateExerciseForm = false)}>
+							Close
+						</button>
+					</form>
+				</dialog>
+
+				<div class="stack-tight">
+					{#each template.templateSetGroups as setGroup, setGroupIndex (setGroup.id)}
+						<article class="set-group {setGroupIndex === 0 ? 'active-border' : ''}">
+							<div class="group-header">
+								<h3>{setGroupIndex + 1}. {setGroup.exercise.name}</h3>
+							</div>
+
+							<div class="group-controls">
+								<form {...moveTemplateSetGroup.for(`move-up-${setGroup.id}`)}>
+									<input type="hidden" name="templateId" value={template.id} />
+									<input type="hidden" name="setGroupId" value={setGroup.id} />
+									<input type="hidden" name="direction" value="up" />
+									<button type="submit" class="outline-soft" disabled={setGroupIndex === 0}>Move up</button>
+								</form>
+
+								<form {...moveTemplateSetGroup.for(`move-down-${setGroup.id}`)}>
+									<input type="hidden" name="templateId" value={template.id} />
+									<input type="hidden" name="setGroupId" value={setGroup.id} />
+									<input type="hidden" name="direction" value="down" />
+									<button
+										type="submit"
+										class="outline-soft"
+										disabled={setGroupIndex === template.templateSetGroups.length - 1}
+									>
+										Move down
+									</button>
+								</form>
+
+								<form {...addSetToTemplateGroup.for(setGroup.id)}>
+									<input type="hidden" name="templateId" value={template.id} />
+									<input type="hidden" name="setGroupId" value={setGroup.id} />
+									<button type="submit">Add set</button>
+								</form>
+
+								<form {...removeTemplateSetGroup.for(setGroup.id)}>
+									<input type="hidden" name="templateId" value={template.id} />
+									<input type="hidden" name="setGroupId" value={setGroup.id} />
+									<button type="submit" class="outline-soft" data-variant="danger">Remove set group</button>
+								</form>
+							</div>
+
+							<div class="set-list">
+								{#each setGroup.templateSets as set, setIndex (set.id)}
+									<div class="set-row">
+										<div class="set-meta">
+											<span>Set {setIndex + 1}</span>
+											<span>{set.type}</span>
+										</div>
+										<form {...removeSetFromTemplateGroup.for(set.id)}>
+											<input type="hidden" name="templateId" value={template.id} />
+											<input type="hidden" name="setGroupId" value={setGroup.id} />
+											<input type="hidden" name="setId" value={set.id} />
+											<button type="submit" class="outline-soft">Remove set</button>
+										</form>
+									</div>
+								{/each}
+							</div>
+						</article>
+					{/each}
+				</div>
+			</article>
+		</section>
 	{/if}
 {/if}
